@@ -16,5 +16,6 @@ Also you should create `FinFun` sheet into your google account.
 
 # Running
 
-Fill the stocks you are interested in into `stocks.json`
+Fill the stocks you are interested in into `stocks.json` then
+
 `python3 finfun.py`

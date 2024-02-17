@@ -3,6 +3,8 @@ import pandas as pd
 import json
 import pygsheets
 
+
+#TODO: Get sector PE and compare PE relative to Sector PE
 def get_stock_data(ticker):
     try:
         stock = yf.Ticker(ticker)
@@ -58,6 +60,8 @@ def main():
     sheet_name = 'Data'
     publish_to_google_sheet(df, spreadsheet_name, sheet_name)
 
+#TODO: Add Publish to local Excel
+#TODO: Add publish to database
 
 if __name__ == "__main__":
     main()

@@ -5,8 +5,9 @@
     {"ticker": "ISRG"},
     {"ticker": "MSFT"},
     {"ticker": "TSLA"},
+    {"ticker": "NIO"},
     {"ticker": "NVDA"},
-    {"ticker": "BAYN"},
+    {"ticker": "BAYN.DE"},
     {"ticker": "V"},
     {"ticker": "MA"},
     {"ticker": "IFNNY"},
@@ -14,11 +15,17 @@
     {"ticker": "IBM"},
     {"ticker": "ADBE"},
     {"ticker": "INTC"},
+    {"ticker": "AMD"},
     {"ticker": "ASML"},
     {"ticker": "XOM"},
     {"ticker": "GILD"},
     {"ticker": "MDT"},
     {"ticker": "ABT"},
     {"ticker": "CVX"},
-    {"ticker": "BMW"}
+    {"ticker": "BMW.DE"},
+    {"ticker": "MBG.DE"},
+    {"ticker": "HD"},
+    {"ticker": "NKE"},
+    {"ticker": "ADS.DE"}
+
 ]

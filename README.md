@@ -8,6 +8,7 @@ Install the following python packages
 ```
 pip3 install pygsheets
 pip3 install yfinance --upgrade --no-cache-dir
+pip3 install openpyxl
 ```
 
 To access google sheets you need OAuthCredentials, this can be obtained following this [tutorial](https://pygsheets.readthedocs.io/en/latest/authorization.html). Afterwards, download the secret file and save it to the same project path as `client_secret.json`

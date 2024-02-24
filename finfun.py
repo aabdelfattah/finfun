@@ -60,6 +60,10 @@ def main():
     sheet_name = 'Data'
     publish_to_google_sheet(df, spreadsheet_name, sheet_name)
 
+    # Publish DataFrame to excel
+    excel_file_path = 'FinFun.xlsx'  # Path to save the Excel file
+    df.to_excel(excel_file_path, index=False)
+
 #TODO: Add Publish to local Excel
 #TODO: Add publish to database
 

@@ -64,7 +64,6 @@ def main():
     excel_file_path = 'FinFun.xlsx'  # Path to save the Excel file
     df.to_excel(excel_file_path, index=False)
 
-#TODO: Add Publish to local Excel
 #TODO: Add publish to database
 
 if __name__ == "__main__":

@@ -2,17 +2,51 @@ import yfinance as yf
 import pandas as pd
 import json
 import pygsheets
+import json
+import cProfile
+import argparse
+
+
+
+def get_sp500_tickers_wikipedia(sp500_list_json):
+    # Fetch S&P 500 constituents from Wikipedia
+    url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+    sp500_data = pd.read_html(url)
+    sp500_df = sp500_data[0]  # The first table on the page contains S&P 500 constituents
+
+    # Prepare data in the required format
+    sp500_json_data = []
+    for index, row in sp500_df.iterrows():
+        ticker = row['Symbol']
+        sector = row['GICS Sector']
+        security_name = row['Security']
+        sp500_json_data.append({"ticker": ticker, "sector": sector, "security_name": security_name})
+
+    # Write data to JSON file
+    with open(sp500_list_json, 'w') as json_file:
+        json.dump(sp500_json_data, json_file, indent=4)
+
+    print("S&P 500 tickers, sectors, and security names persisted in " + sp500_list_json + " file.")
 
 
 #TODO: Get sector PE and compare PE relative to Sector PE
+    
+
+def get_historical_data(stock):
+    hist_data = stock.history(period="max")
+    hist_5y = hist_data[hist_data.index >= hist_data.index[-1] - pd.DateOffset(years=5)]
+    hist_1y = hist_data[hist_data.index >= hist_data.index[-1] - pd.DateOffset(years=1)]
+    return hist_5y, hist_1y, hist_data
+
+def calculate_last_5_years_return(hist_5y):
+    return (hist_5y.iloc[-1]['Close'] - hist_5y.iloc[0]['Close']) / hist_5y.iloc[0]['Close']
+
 def get_stock_data(ticker):
     try:
+        print("Getting info for ticker "+ticker)
         stock = yf.Ticker(ticker)
-        hist_5y = stock.history(period="5y")
-        hist_1y = stock.history(period="1y")
-        hist_alltime = stock.history(period="max")
-
-        last_5_years_return = (hist_5y.iloc[-1]['Close'] - hist_5y.iloc[0]['Close']) / hist_5y.iloc[0]['Close']
+        hist_5y, hist_1y, hist_alltime = get_historical_data(stock)
+        last_5_years_return = calculate_last_5_years_return(hist_5y)
 
         return {
             'symbol': ticker,
@@ -42,7 +76,9 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
     wks.set_dataframe(df, 'A1')
 
 def main():
-    with open('stocks.json') as f:
+    get_sp500_tickers_wikipedia('sp500.json')
+
+    with open('sp500.json') as f:
         stocks = json.load(f)
 
     data = []
@@ -64,7 +100,17 @@ def main():
     excel_file_path = 'FinFun.xlsx'  # Path to save the Excel file
     df.to_excel(excel_file_path, index=False)
 
-#TODO: Add publish to database
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Analyzes stocks according to fundamental metrics.')
+    parser.add_argument('-p', '--profile', action='store_true', help='Enable profiling')
+    return parser.parse_args()
+
+#TODO: Add publish to database
 if __name__ == "__main__":
-    main()
+    args = parse_arguments()
+    if args.profile:
+        cProfile.run('main()', sort='cumulative')
+    else:
+        main()
+

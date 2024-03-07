@@ -105,7 +105,7 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
 def main():
     get_sp500_tickers_wikipedia('sp500.json')
 
-    with open('stocks.json') as f:
+    with open('sp500.json') as f:
         stocks = json.load(f)
   
     data = {}

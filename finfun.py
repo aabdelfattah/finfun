@@ -47,11 +47,21 @@ def normalize_parameter( parameter):
     return (parameter - mean) / std
 
 def calculate_score( df):
-    wd = wde = wp = 1/3
+    wd = wde = wp = 0.2
+    wr = 0.4
     df['normalized_dividend_yield'] = normalize_parameter(df['dividend_yield'])
-    df['normalized_debt_to_equity'] = normalize_parameter(df['debt_to_equity'])
+    df['normalized_debt_to_equity'] = 1 - normalize_parameter(df['debt_to_equity'])
     df['normalized_profit_margins'] = normalize_parameter(df['profit_margins'])
-    df['health_score'] = wd * df['normalized_dividend_yield'] + wde * df['normalized_debt_to_equity'] + wp * df['normalized_profit_margins']
+    df['normalized_last_5_years_return'] = normalize_parameter(df['last_5_years_return'])
+
+    df['health_score'] = wd * df['normalized_dividend_yield'] + wde * df['normalized_debt_to_equity'] + wp * df['normalized_profit_margins'] + wr * df['normalized_last_5_years_return'] 
+    
+    wpe = 0.6
+    wdh = 0.4
+    df['normalized_pe'] = 1 - normalize_parameter(df['pe'])
+    df['normalized_discount_all_time_high'] = normalize_parameter(df['discount_all_time_high'])   
+    df['value_score'] = wpe * df['normalized_pe'] + wdh * df['normalized_discount_all_time_high']
+
     return df
     
 def get_stock_data(ticker):
@@ -67,6 +77,7 @@ def get_stock_data(ticker):
             'price': stock.info.get('currentPrice', None),
             '52_high': hist_1y['Close'].max(),
             'all_time_high': hist_alltime['High'].max(),
+            'discount_all_time_high':1 - (stock.info.get('currentPrice', None)/(hist_alltime['High'].max())),
             'pe': stock.info.get('forwardPE', None),
             'peg': stock.info.get('pegRatio', None),
             'market_cap': stock.info.get('marketCap', None),

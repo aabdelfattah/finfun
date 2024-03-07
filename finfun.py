@@ -5,6 +5,7 @@ import pygsheets
 import json
 import cProfile
 import argparse
+import numpy as np
 
 
 
@@ -30,8 +31,6 @@ def get_sp500_tickers_wikipedia(sp500_list_json):
 
 
 #TODO: Get sector PE and compare PE relative to Sector PE
-    
-
 def get_historical_data(stock):
     hist_data = stock.history(period="max")
     hist_5y = hist_data[hist_data.index >= hist_data.index[-1] - pd.DateOffset(years=5)]
@@ -41,6 +40,20 @@ def get_historical_data(stock):
 def calculate_last_5_years_return(hist_5y):
     return (hist_5y.iloc[-1]['Close'] - hist_5y.iloc[0]['Close']) / hist_5y.iloc[0]['Close']
 
+
+def normalize_parameter( parameter):
+    mean = np.mean(parameter)
+    std = np.std(parameter, ddof=1)
+    return (parameter - mean) / std
+
+def calculate_score( df):
+    wd = wde = wp = 1/3
+    df['normalized_dividend_yield'] = normalize_parameter(df['dividend_yield'])
+    df['normalized_debt_to_equity'] = normalize_parameter(df['debt_to_equity'])
+    df['normalized_profit_margins'] = normalize_parameter(df['profit_margins'])
+    df['health_score'] = wd * df['normalized_dividend_yield'] + wde * df['normalized_debt_to_equity'] + wp * df['normalized_profit_margins']
+    return df
+    
 def get_stock_data(ticker):
     try:
         print("Getting info for ticker "+ticker)
@@ -83,10 +96,7 @@ def main():
 
     with open('stocks.json') as f:
         stocks = json.load(f)
-
-
-    
-    
+  
     data = {}
     for stock in stocks:
         ticker = stock['ticker']
@@ -100,6 +110,7 @@ def main():
     sector_dataframes ={}
     for sector, stocks_data in data.items():
         df = pd.DataFrame(stocks_data)
+        df = calculate_score(df)
         sector_dataframes[sector] = df
     # Now you have a dictionary of DataFrames with the sector as a key
     for sector, df in sector_dataframes.items():
@@ -112,8 +123,9 @@ def main():
     #publish_to_google_sheet(df, spreadsheet_name, sheet_name)
 
     # Publish DataFrame to excel
+    all_stocks_df = pd.concat(sector_dataframes.values(), ignore_index=True)
     excel_file_path = 'FinFun.xlsx'  # Path to save the Excel file
-    df.to_excel(excel_file_path, index=False)
+    all_stocks_df.to_excel(excel_file_path, index=False)
 
 
 def parse_arguments():

@@ -50,14 +50,17 @@ def get_stock_data(ticker):
 
         return {
             'symbol': ticker,
+            'sector': stock.info.get('sector', None),
             'price': stock.info.get('currentPrice', None),
             '52_high': hist_1y['Close'].max(),
             'all_time_high': hist_alltime['High'].max(),
             'pe': stock.info.get('forwardPE', None),
             'peg': stock.info.get('pegRatio', None),
             'market_cap': stock.info.get('marketCap', None),
-            'dividend_yield': stock.info.get('dividendYield', None),
-            'last_5_years_return': last_5_years_return
+            'dividend_yield': stock.info.get('dividendYield', 0),
+            'last_5_years_return': last_5_years_return,
+            'profit_margins':stock.info.get('profitMargins', None),
+            'debt_to_equity':stock.info.get('debtToEquity', None),
         }
     except Exception as e:
         print(f"Error fetching data for symbol {ticker}: {e}")
@@ -78,23 +81,35 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
 def main():
     get_sp500_tickers_wikipedia('sp500.json')
 
-    with open('sp500.json') as f:
+    with open('stocks.json') as f:
         stocks = json.load(f)
 
-    data = []
+
+    
+    
+    data = {}
     for stock in stocks:
         ticker = stock['ticker']
         stock_data = get_stock_data(ticker)
         if stock_data:
-            data.append(stock_data)
+            sector = stock_data['sector']
+            if sector not in data:
+                data[sector] = []
+            data[sector].append(stock_data)
 
-    df = pd.DataFrame(data)
-    print(df)
+    sector_dataframes ={}
+    for sector, stocks_data in data.items():
+        df = pd.DataFrame(stocks_data)
+        sector_dataframes[sector] = df
+    # Now you have a dictionary of DataFrames with the sector as a key
+    for sector, df in sector_dataframes.items():
+        print(f"\nSector: {sector}")
+        print(df)
     
     # Publish DataFrame to Google Sheet
-    spreadsheet_name = 'FinFun'
-    sheet_name = 'Data'
-    publish_to_google_sheet(df, spreadsheet_name, sheet_name)
+    #spreadsheet_name = 'FinFun'
+    #sheet_name = 'Data'
+    #publish_to_google_sheet(df, spreadsheet_name, sheet_name)
 
     # Publish DataFrame to excel
     excel_file_path = 'FinFun.xlsx'  # Path to save the Excel file

@@ -48,19 +48,25 @@ def normalize_parameter( parameter):
 
 def calculate_score( df):
     wd = wde = wp = 0.2
-    wr = 0.4
-    df['normalized_dividend_yield'] = normalize_parameter(df['dividend_yield'])
-    df['normalized_debt_to_equity'] = 1 - normalize_parameter(df['debt_to_equity'])
-    df['normalized_profit_margins'] = normalize_parameter(df['profit_margins'])
-    df['normalized_last_5_years_return'] = normalize_parameter(df['last_5_years_return'])
+    df_temp={}
+    df_temp['normalized_dividend_yield'] = normalize_parameter(df['dividend_yield'])
+    df_temp['normalized_debt_to_equity'] = 1 - normalize_parameter(df['debt_to_equity'])
+    df_temp['normalized_profit_margins'] = normalize_parameter(df['profit_margins'])
 
-    df['health_score'] = wd * df['normalized_dividend_yield'] + wde * df['normalized_debt_to_equity'] + wp * df['normalized_profit_margins'] + wr * df['normalized_last_5_years_return'] 
     
     wpe = 0.6
     wdh = 0.4
-    df['normalized_pe'] = 1 - normalize_parameter(df['pe'])
-    df['normalized_discount_all_time_high'] = normalize_parameter(df['discount_all_time_high'])   
-    df['value_score'] = wpe * df['normalized_pe'] + wdh * df['normalized_discount_all_time_high']
+    df_temp['normalized_pe'] = 1 - normalize_parameter(df['pe'])
+    df_temp['normalized_discount_all_time_high'] = normalize_parameter(df['discount_all_time_high'])
+
+    df_temp['health_score'] = wd * df_temp['normalized_dividend_yield'] + wde * df_temp['normalized_debt_to_equity'] + wp * df_temp['normalized_profit_margins']
+    df_temp['value_score'] = wpe * df_temp['normalized_pe'] + wdh * df_temp['normalized_discount_all_time_high']
+    
+    df['health_score_rank'] = df_temp['health_score'].rank(ascending=False, method='min')
+    df['value_score_rank'] = df_temp['value_score'].rank(ascending=False, method='min')
+    df['last_5_years_return_rank'] = df['last_5_years_return'].rank(ascending=False, method='min')
+
+    df['total_rank'] = (df['health_score_rank'] + df['value_score_rank'] +  df['last_5_years_return_rank']).rank(method='min')
 
     return df
     
@@ -82,9 +88,9 @@ def get_stock_data(ticker):
             'peg': stock.info.get('pegRatio', None),
             'market_cap': stock.info.get('marketCap', None),
             'dividend_yield': stock.info.get('dividendYield', 0),
-            'last_5_years_return': last_5_years_return,
             'profit_margins':stock.info.get('profitMargins', None),
             'debt_to_equity':stock.info.get('debtToEquity', None),
+            'last_5_years_return': last_5_years_return,
         }
     except Exception as e:
         print(f"Error fetching data for symbol {ticker}: {e}")
@@ -105,7 +111,7 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
 def main():
     get_sp500_tickers_wikipedia('sp500.json')
 
-    with open('sp500.json') as f:
+    with open('stocks.json') as f:
         stocks = json.load(f)
   
     data = {}

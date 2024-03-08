@@ -108,10 +108,10 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
     df.fillna(0, inplace=True)
     wks.set_dataframe(df, 'A1')
 
-def main():
+def main(r):
     get_sp500_tickers_wikipedia('sp500.json')
 
-    with open('stocks.json') as f:
+    with open('sp500.json') as f:
         stocks = json.load(f)
   
     data = {}
@@ -125,10 +125,13 @@ def main():
             data[sector].append(stock_data)
 
     sector_dataframes ={}
+    top_ranked_stocks = pd.DataFrame()  # Initialize as empty DataFrame
     for sector, stocks_data in data.items():
         df = pd.DataFrame(stocks_data)
         df = calculate_score(df)
         sector_dataframes[sector] = df
+        top_ranked_stocks = pd.concat([top_ranked_stocks, df.nsmallest(r, 'total_rank')])  # Select top r ranked stocks in each sector
+
     # Now you have a dictionary of DataFrames with the sector as a key
     for sector, df in sector_dataframes.items():
         print(f"\nSector: {sector}")
@@ -144,10 +147,15 @@ def main():
     excel_file_path = 'FinFun.xlsx'  # Path to save the Excel file
     all_stocks_df.to_excel(excel_file_path, index=False)
 
+    # Publish top ranked stocks DataFrame to excel
+    excel_file_path = 'TopRankedStocks.xlsx'
+    top_ranked_stocks.to_excel(excel_file_path, index=False)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Analyzes stocks according to fundamental metrics.')
     parser.add_argument('-p', '--profile', action='store_true', help='Enable profiling')
+    parser.add_argument('-r', '--rank', type=int, required=True, help='Get top-ranked stocks up to specified rank')
+
     return parser.parse_args()
 
 #TODO: Add publish to database
@@ -156,5 +164,5 @@ if __name__ == "__main__":
     if args.profile:
         cProfile.run('main()', sort='cumulative')
     else:
-        main()
+        main(args.rank)
 

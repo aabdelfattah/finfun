@@ -47,7 +47,7 @@ def normalize_parameter( parameter):
     return (parameter - mean) / std
 
 def calculate_score( df):
-    wd = wde = wp = 0.2
+    wd = wde = wp = 1/3
     df_temp={}
     df_temp['normalized_dividend_yield'] = normalize_parameter(df['dividend_yield'])
     df_temp['normalized_debt_to_equity'] = 1 - normalize_parameter(df['debt_to_equity'])

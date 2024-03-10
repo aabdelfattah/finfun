@@ -159,6 +159,8 @@ def parse_arguments():
     return parser.parse_args()
 
 #TODO: Add publish to database
+#TODO: Add integration to langchain
+#TODO: Refactor to separate concerns and add some design
 if __name__ == "__main__":
     args = parse_arguments()
     if args.profile:

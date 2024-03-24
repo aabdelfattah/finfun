@@ -28,4 +28,5 @@ class StocksDataFetcher:
     
     def fetch_local_tickers(self):
         with open(self.stocks_json, 'w') as json_file:
-            stocks = json.load(f)
+            local_stocks_json_data = json.load(json_file)
+        return local_stocks_json_data

@@ -6,29 +6,9 @@ import json
 import cProfile
 import argparse
 import numpy as np
-from stock_list_fetcher import StockListFetcher
+from stocks_data_fetcher import StocksDataFetcher
 
 
-
-def get_sp500_tickers_wikipedia(sp500_list_json):
-    # Fetch S&P 500 constituents from Wikipedia
-    url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-    sp500_data = pd.read_html(url)
-    sp500_df = sp500_data[0]  # The first table on the page contains S&P 500 constituents
-
-    # Prepare data in the required format
-    sp500_json_data = []
-    for index, row in sp500_df.iterrows():
-        ticker = row['Symbol']
-        sector = row['GICS Sector']
-        security_name = row['Security']
-        sp500_json_data.append({"ticker": ticker, "sector": sector, "security_name": security_name})
-
-    # Write data to JSON file
-    with open(sp500_list_json, 'w') as json_file:
-        json.dump(sp500_json_data, json_file, indent=4)
-
-    print("S&P 500 tickers, sectors, and security names persisted in " + sp500_list_json + " file.")
 
 
 #TODO: Get sector PE and compare PE relative to Sector PE
@@ -108,14 +88,11 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
     wks.set_dataframe(df, 'A1')
 
 def main(r):
-    #get_sp500_tickers_wikipedia('sp500.json')
-    fetcher = StockListFetcher()
+    fetcher = StocksDataFetcher()
     sp500_stocks = fetcher.fetch_sp500_tickers()
     print(sp500_stocks)
-
     stocks = sp500_stocks
-    #with open('sp500.json') as f:
-        #stocks = json.load(f)
+
   
     data = {}
     for stock in stocks:

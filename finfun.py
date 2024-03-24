@@ -40,32 +40,30 @@ def get_historical_data(stock):
 def calculate_last_5_years_return(hist_5y):
     return (hist_5y.iloc[-1]['Close'] - hist_5y.iloc[0]['Close']) / hist_5y.iloc[0]['Close']
 
-
+# compresses a set of data to a normal standard deviation with mean=0 , sigma=1 and 99.7% of the points wil lie between 3 and -3
 def normalize_parameter( parameter):
     mean = np.mean(parameter)
     std = np.std(parameter, ddof=1)
     return (parameter - mean) / std
 
 def calculate_score( df):
-    wd = wde = wp = 1/3
-    df_temp={}
-    df_temp['normalized_dividend_yield'] = normalize_parameter(df['dividend_yield'])
-    df_temp['normalized_debt_to_equity'] = 1 - normalize_parameter(df['debt_to_equity'])
-    df_temp['normalized_profit_margins'] = normalize_parameter(df['profit_margins'])
+    wd = wp = 1/3
+    wde = -(1/3)
+    df['normalized_dividend_yield'] = normalize_parameter(df['dividend_yield'])
+    df['normalized_debt_to_equity'] = normalize_parameter(df['debt_to_equity'])
+    df['normalized_profit_margins'] = normalize_parameter(df['profit_margins'])
 
-    
-    wpe = 0.6
+    wpe = -0.6
     wdh = 0.4
-    df_temp['normalized_pe'] = 1 - normalize_parameter(df['pe'])
-    df_temp['normalized_discount_all_time_high'] = normalize_parameter(df['discount_all_time_high'])
+    df['normalized_pe'] =  normalize_parameter(df['pe'])
+    df['normalized_discount_all_time_high'] = normalize_parameter(df['discount_all_time_high'])
 
-    df_temp['health_score'] = wd * df_temp['normalized_dividend_yield'] + wde * df_temp['normalized_debt_to_equity'] + wp * df_temp['normalized_profit_margins']
-    df_temp['value_score'] = wpe * df_temp['normalized_pe'] + wdh * df_temp['normalized_discount_all_time_high']
-    
-    df['health_score_rank'] = df_temp['health_score'].rank(ascending=False, method='min')
-    df['value_score_rank'] = df_temp['value_score'].rank(ascending=False, method='min')
+    df['health_score'] = wd * df['normalized_dividend_yield'] + wde * df['normalized_debt_to_equity'] + wp * df['normalized_profit_margins']
+    df['value_score'] = wpe * df['normalized_pe'] + wdh * df['normalized_discount_all_time_high']    
+
+    df['health_score_rank'] = df['health_score'].rank(ascending=False, method='min')
+    df['value_score_rank'] = df['value_score'].rank(ascending=False, method='min')
     df['last_5_years_return_rank'] = df['last_5_years_return'].rank(ascending=False, method='min')
-
     df['total_rank'] = (df['health_score_rank'] + df['value_score_rank'] +  df['last_5_years_return_rank']).rank(method='min')
 
     return df

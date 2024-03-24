@@ -6,6 +6,7 @@ import json
 import cProfile
 import argparse
 import numpy as np
+from stock_list_fetcher import StockListFetcher
 
 
 
@@ -107,10 +108,14 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
     wks.set_dataframe(df, 'A1')
 
 def main(r):
-    get_sp500_tickers_wikipedia('sp500.json')
+    #get_sp500_tickers_wikipedia('sp500.json')
+    fetcher = StockListFetcher()
+    sp500_stocks = fetcher.fetch_sp500_tickers()
+    print(sp500_stocks)
 
-    with open('sp500.json') as f:
-        stocks = json.load(f)
+    stocks = sp500_stocks
+    #with open('sp500.json') as f:
+        #stocks = json.load(f)
   
     data = {}
     for stock in stocks:

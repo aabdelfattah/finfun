@@ -1,5 +1,6 @@
 # finfun
-Fetch stock data from yfinance and publish it to a google sheet named `FinFun`
+Fetch SP500 stock data from yfinance, assign them a score and publish it to an excel sheet named `TopRankedStocks` , optionally can also publish to a google sheet
+
 
 # dependencies
 
@@ -17,6 +18,6 @@ Also you should create `FinFun` sheet into your google account.
 
 # Running
 
-Fill the stocks you are interested in into `stocks.json` then
+`python3 finfun.py -r n`
 
-`python3 finfun.py`
+where n is n ranked top stocks in a sector

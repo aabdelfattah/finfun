@@ -90,23 +90,11 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
 def main(r):
     fetcher = StocksDataFetcher()
     sp500_stocks = fetcher.stocks_list
-    print(sp500_stocks)
-    stocks = sp500_stocks
-
-  
-    data = {}
-    for stock in stocks:
-        ticker = stock['ticker']
-        stock_data = get_stock_data(ticker)
-        if stock_data:
-            sector = stock_data['sector']
-            if sector not in data:
-                data[sector] = []
-            data[sector].append(stock_data)
-
+    data = fetcher.stocks_dict_by_sector
     sector_dataframes ={}
     top_ranked_stocks = pd.DataFrame()  # Initialize as empty DataFrame
     for sector, stocks_data in data.items():
+        print(stocks_data)
         df = pd.DataFrame(stocks_data)
         df = calculate_score(df)
         sector_dataframes[sector] = df

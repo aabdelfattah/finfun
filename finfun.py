@@ -89,7 +89,7 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
 
 def main(r):
     fetcher = StocksDataFetcher()
-    sp500_stocks = fetcher.fetch_sp500_tickers()
+    sp500_stocks = fetcher.stocks_list
     print(sp500_stocks)
     stocks = sp500_stocks
 

@@ -4,6 +4,7 @@ import json
 class StocksDataFetcher:
     def __init__(self):
         self.stocks_json = 'stocks_list.json'
+        self.stocks_list = self.fetch_sp500_tickers()
 
     def fetch_sp500_tickers(self, num_stocks=None):
         url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'

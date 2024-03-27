@@ -11,15 +11,6 @@ from stocks_data_fetcher import StocksDataFetcher
 
 
 
-#TODO: Get sector PE and compare PE relative to Sector PE
-def get_historical_data(stock):
-    hist_data = stock.history(period="max")
-    hist_5y = hist_data[hist_data.index >= hist_data.index[-1] - pd.DateOffset(years=5)]
-    hist_1y = hist_data[hist_data.index >= hist_data.index[-1] - pd.DateOffset(years=1)]
-    return hist_5y, hist_1y, hist_data
-
-def calculate_last_5_years_return(hist_5y):
-    return (hist_5y.iloc[-1]['Close'] - hist_5y.iloc[0]['Close']) / hist_5y.iloc[0]['Close']
 
 # compresses a set of data to a normal standard deviation with mean=0 , sigma=1 and 99.7% of the points wil lie between 3 and -3
 def normalize_parameter( parameter):
@@ -49,31 +40,7 @@ def calculate_score( df):
 
     return df
     
-def get_stock_data(ticker):
-    try:
-        print("Getting info for ticker "+ticker)
-        stock = yf.Ticker(ticker)
-        hist_5y, hist_1y, hist_alltime = get_historical_data(stock)
-        last_5_years_return = calculate_last_5_years_return(hist_5y)
 
-        return {
-            'symbol': ticker,
-            'sector': stock.info.get('sector', None),
-            'price': stock.info.get('currentPrice', None),
-            '52_high': hist_1y['Close'].max(),
-            'all_time_high': hist_alltime['High'].max(),
-            'discount_all_time_high':1 - (stock.info.get('currentPrice', None)/(hist_alltime['High'].max())),
-            'pe': stock.info.get('forwardPE', None),
-            'peg': stock.info.get('pegRatio', None),
-            'market_cap': stock.info.get('marketCap', None),
-            'dividend_yield': stock.info.get('dividendYield', 0),
-            'profit_margins':stock.info.get('profitMargins', None),
-            'debt_to_equity':stock.info.get('debtToEquity', None),
-            'last_5_years_return': last_5_years_return,
-        }
-    except Exception as e:
-        print(f"Error fetching data for symbol {ticker}: {e}")
-        return None
 
 def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
     # Authenticate with Pygsheets
@@ -90,11 +57,10 @@ def publish_to_google_sheet(df, spreadsheet_name, sheet_name):
 def main(r):
     fetcher = StocksDataFetcher()
     sp500_stocks = fetcher.stocks_list
-    data = fetcher.stocks_dict_by_sector
+    data = fetcher.stocks_dict_by_sector 
     sector_dataframes ={}
     top_ranked_stocks = pd.DataFrame()  # Initialize as empty DataFrame
     for sector, stocks_data in data.items():
-        print(stocks_data)
         df = pd.DataFrame(stocks_data)
         df = calculate_score(df)
         sector_dataframes[sector] = df

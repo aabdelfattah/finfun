@@ -1,6 +1,7 @@
 
 import cProfile
 import argparse
+import datetime
 from stocks_data_fetcher import StocksDataFetcher
 from stocks_analyzer import StocksAnalyzer
 from results_publisher import ResultsPublisher
@@ -25,6 +26,10 @@ if __name__ == "__main__":
         import cProfile
         cProfile.run('analyzer.analyze_stocks(stocks_dict_by_sector, args.rank)', sort='cumulative')
     else:
-        top_ranked_stocks = analyzer.analyze_stocks(stocks_dict_by_sector, args.rank)
-        ResultsPublisher.publish_results(top_ranked_stocks, output_format='excel')
+        analyzer.analyze_stocks(stocks_dict_by_sector, args.rank)
+        current_datetime = datetime.datetime.now()
+        top_ranked_stocks_string = f"{current_datetime.strftime('%Y%m%d_%H%M%S')}TopRankedStocks"
+        all_stocks_string = f"{current_datetime.strftime('%Y%m%d_%H%M%S')}AllStocks"
+        ResultsPublisher.publish_results(analyzer.all_stocks, output_format='excel', spreadsheet_name=all_stocks_string)
+        ResultsPublisher.publish_results(analyzer.top_ranked_stocks, output_format='excel', spreadsheet_name=top_ranked_stocks_string)
 

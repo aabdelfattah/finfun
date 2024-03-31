@@ -3,8 +3,9 @@ import numpy as np
 
 class StocksAnalyzer:
     def __init__(self):
-        self.sector_dataframes = {}
+        self.all_stocks_by_sector = {}
         self.top_ranked_stocks = pd.DataFrame()
+        self.all_stocks = pd.DataFrame()
 
     def normalize_parameter(self, parameter):
         mean = np.mean(parameter)
@@ -39,10 +40,14 @@ class StocksAnalyzer:
         for sector, stocks_data in stocks_dict_by_sector.items():
             df = pd.DataFrame(stocks_data)
             df = self.calculate_score(df)
-            self.sector_dataframes[sector] = df
-            self.top_ranked_stocks = pd.concat([self.top_ranked_stocks, df.nsmallest(r, 'total_rank')])
-        # Now you have a dictionary of DataFrames with the sector as a key
-        for sector, df in self.sector_dataframes.items():
+            df_sorted_by_health = df.sort_values(by='health_score_rank', ascending=True)
+            self.all_stocks = df_sorted_by_health
+            top_health_stocks = df_sorted_by_health.head(r)
+            self.all_stocks_by_sector[sector] = df
+            self.top_ranked_stocks = pd.concat([self.top_ranked_stocks, top_health_stocks])
+        
+        # print all SP500 stocks dataframes
+        for sector, df in self.all_stocks_by_sector.items():
             print(f"\nSector: {sector}")
             print(df)
         return self.top_ranked_stocks

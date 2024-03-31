@@ -33,6 +33,14 @@ class StocksAnalyzer:
         df['last_5_years_return_rank'] = df['last_5_years_return'].rank(ascending=False, method='min')
         df['total_rank'] = (df['health_score_rank'] + df['value_score_rank'] + df['last_5_years_return_rank']).rank(
             method='min')
+        
+        rank_buy_threshold=10
+        rank_sell_threshold=10
+        buy_threshold=0.25
+        sell_threshold=0.1
+        df['buy_sell'] = ''
+        df.loc[(df['total_rank'] < rank_buy_threshold) & (df['normalized_discount_all_time_high'] > buy_threshold), 'buy_sell'] = 'Buy'
+        df.loc[(df['value_score_rank'] > rank_sell_threshold) & (df['normalized_discount_all_time_high'] < sell_threshold), 'buy_sell'] = 'Sell'
 
         return df
 

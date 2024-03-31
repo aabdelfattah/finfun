@@ -13,9 +13,6 @@ class ResultsPublisher:
 
     @staticmethod
     def publish_to_excel(df, spreadsheet_name):
-        excel_file_path = 'FinFun.xlsx'
-        df.to_excel(excel_file_path, index=False)
-
         excel_file_path = spreadsheet_name+'.xlsx'
         df.to_excel(excel_file_path, index=False)
 

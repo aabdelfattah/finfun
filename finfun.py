@@ -13,7 +13,6 @@ def parse_arguments():
 
     return parser.parse_args()
 
-#TODO: Add buy/sell recommendation field
 #TODO: read current user stock profile and analyze
 #TODO: Add publish to database
 #TODO: Add integration to langchain

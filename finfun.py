@@ -13,8 +13,11 @@ def parse_arguments():
 
     return parser.parse_args()
 
+#TODO: Add buy/sell recommendation field
+#TODO: read current user stock profile and analyze
 #TODO: Add publish to database
 #TODO: Add integration to langchain
+#TODO: fetch 10k of top ranked stokcs
 if __name__ == "__main__":
     args = parse_arguments()
     fetcher = StocksDataFetcher()

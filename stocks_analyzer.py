@@ -41,7 +41,7 @@ class StocksAnalyzer:
             df = pd.DataFrame(stocks_data)
             df = self.calculate_score(df)
             df_sorted_by_health = df.sort_values(by='health_score_rank', ascending=True)
-            self.all_stocks = df_sorted_by_health
+            self.all_stocks = pd.concat([self.all_stocks, df_sorted_by_health])
             top_health_stocks = df_sorted_by_health.head(r)
             self.all_stocks_by_sector[sector] = df
             self.top_ranked_stocks = pd.concat([self.top_ranked_stocks, top_health_stocks])

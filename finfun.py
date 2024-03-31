@@ -4,7 +4,7 @@ import argparse
 from stocks_data_fetcher import StocksDataFetcher
 from stocks_analyzer import StocksAnalyzer
 from results_publisher import ResultsPublisher
-
+from database_manager import DatabaseManager
 
 
 def parse_arguments():
@@ -26,5 +26,13 @@ if __name__ == "__main__":
         cProfile.run('analyzer.analyze_stocks(stocks_dict_by_sector, args.rank)', sort='cumulative')
     else:
         top_ranked_stocks = analyzer.analyze_stocks(stocks_dict_by_sector, args.rank)
-        ResultsPublisher.publish_results(top_ranked_stocks, output_format='excel')
+        ResultsPublisher.publish_results(top_ranked_stocks, output_format='excel', spreadsheet_name='top_ranked_stocks')        
 
+
+         # Define your database connection string
+        db_connection_string = 'sqlite:///finfun.db'
+        # Initialize DatabaseManager
+        db_manager = DatabaseManager(db_connection_string)
+        # Publish results to SQL database
+        ResultsPublisher.publish_results(top_ranked_stocks, output_format='sql', db_manager=db_manager, table_name='top_ranked_stocks')        
+    

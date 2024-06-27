@@ -17,6 +17,8 @@ def parse_arguments():
 #TODO: Add publish to database
 #TODO: Add integration to langchain
 #TODO: fetch 10k of top ranked stokcs
+#TODO: analyze and summarize 10k
+#TODO: screen more stocks in the market than SP500
 if __name__ == "__main__":
     args = parse_arguments()
     fetcher = StocksDataFetcher()

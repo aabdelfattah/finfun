@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Current Portfolio</h5>
+            </div>
+            <div class="card-body">
+                {% if portfolio %}
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Allocation (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in portfolio %}
+                            <tr>
+                                <td>{{ stock.stock_symbol }}</td>
+                                <td>{{ "%.2f"|format(stock.allocation_percentage) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No portfolio data available. <a href="{{ url_for('upload_portfolio') }}">Upload your portfolio</a></p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Latest Analysis</h5>
+                {% if portfolio %}
+                    <a href="{{ url_for('analyze_now') }}" class="btn btn-primary btn-sm">Analyze Now</a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                {% if analysis is not none and not analysis.empty %}
+                    <div class="analysis-results">
+                        {% for _, stock in analysis.iterrows() %}
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ stock.symbol }}</h6>
+                                    <p class="card-text">
+                                        <strong>Health Score:</strong> {{ "%.1f"|format(stock.health_score) }}/100<br>
+                                        <strong>Value Score:</strong> {{ "%.1f"|format(stock.value_score) }}/100<br>
+                                        <strong>Total Score:</strong> {{ "%.1f"|format(stock.total_score) }}/100<br>
+                                        <strong>Recommendation:</strong> 
+                                        {% if stock.recommendation == 'Strong Buy' %}
+                                            <span class="badge bg-success">Strong Buy</span>
+                                        {% elif stock.recommendation == 'Buy' %}
+                                            <span class="badge bg-info">Buy</span>
+                                        {% elif stock.recommendation == 'Hold' %}
+                                            <span class="badge bg-warning">Hold</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Sell</span>
+                                        {% endif %}
+                                    </p>
+                                    <div class="small text-muted">
+                                        <strong>Details:</strong><br>
+                                        P/E Ratio: {{ "%.2f"|format(stock.pe) if stock.pe else 'N/A' }}<br>
+                                        Dividend Yield: {{ "%.2f"|format(stock.dividend_yield * 100) if stock.dividend_yield else 'N/A' }}%<br>
+                                        Profit Margin: {{ "%.2f"|format(stock.profit_margins * 100) if stock.profit_margins else 'N/A' }}%<br>
+                                        Discount from ATH: {{ "%.2f"|format(stock.discount_all_time_high * 100) if stock.discount_all_time_high else 'N/A' }}%
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No analysis data available. Click "Analyze Now" to perform an immediate analysis.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

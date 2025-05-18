@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Upload Portfolio</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Choose Portfolio File</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".csv,.txt" required>
+                        <div class="form-text">
+                            Upload a CSV or text file containing your portfolio data.
+                            The file should have two columns:
+                            <ul>
+                                <li><code>stock_symbol</code>: The stock ticker symbol</li>
+                                <li><code>allocation_percentage</code>: The percentage allocation (should sum to 100)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload Portfolio</button>
+                </form>
+
+                <div class="mt-4">
+                    <h6>Example Format:</h6>
+                    <pre class="bg-light p-3 rounded">
+stock_symbol,allocation_percentage
+AAPL,25
+MSFT,25
+GOOGL,25
+AMZN,25</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

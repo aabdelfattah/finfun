@@ -20,22 +20,41 @@ portfolio_manager = PortfolioManager()
 stocks_analyzer = StocksAnalyzer()
 stocks_fetcher = StocksDataFetcher(fetch_sp500=False)
 
+# Cache for analysis results
+last_analysis_time = None
+cached_analysis = None
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def analyze_portfolio(force_update=False):
     """Analyze portfolio stocks with option to force update"""
+    global last_analysis_time, cached_analysis
+    
+    current_time = datetime.datetime.now()
+    
+    # Return cached results if available and not forcing update
+    if not force_update and last_analysis_time and cached_analysis is not None:
+        # Cache for 1 hour unless forced update
+        if (current_time - last_analysis_time).total_seconds() < 3600:
+            return cached_analysis, last_analysis_time
+    
     portfolio_symbols = portfolio_manager.get_portfolio_symbols()
     if not portfolio_symbols:
-        return None
+        return None, None
     
     # Fetch and analyze data for portfolio stocks
     stocks_data = stocks_fetcher.fetch_stocks_data(portfolio_symbols)
     if not stocks_data:
-        return None
+        return None, None
         
     analysis_results = stocks_analyzer.analyze_stocks({'Portfolio': stocks_data})
-    return analysis_results
+    
+    # Update cache
+    last_analysis_time = current_time
+    cached_analysis = analysis_results
+    
+    return analysis_results, last_analysis_time
 
 # Schedule daily analysis
 scheduler = BackgroundScheduler()
@@ -45,13 +64,16 @@ scheduler.start()
 @app.route('/')
 def index():
     portfolio = portfolio_manager.get_current_portfolio()
-    analysis = analyze_portfolio()
-    return render_template('index.html', portfolio=portfolio, analysis=analysis)
+    analysis, analysis_time = analyze_portfolio()
+    return render_template('index.html', 
+                         portfolio=portfolio, 
+                         analysis=analysis, 
+                         analysis_time=analysis_time)
 
 @app.route('/analyze_now')
 def analyze_now():
     """Force immediate analysis of the portfolio"""
-    analysis = analyze_portfolio(force_update=True)
+    analysis, analysis_time = analyze_portfolio(force_update=True)
     if analysis is not None:
         flash('Portfolio analysis completed successfully', 'success')
     else:

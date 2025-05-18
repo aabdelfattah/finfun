@@ -23,8 +23,7 @@ class Portfolio(Base):
 class PortfolioManager:
     def __init__(self, db_url='sqlite:///portfolio.db'):
         self.engine = create_engine(db_url)
-        # Drop all tables to ensure we have a fresh schema
-        Base.metadata.drop_all(self.engine)
+        # Create tables if they don't exist
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
@@ -67,7 +66,7 @@ class PortfolioManager:
             df = pd.read_csv(file_path)
         else:
             # Assume tab or space-delimited text file
-            df = pd.read_csv(file_path, delimiter=r'\s+')  # Fix the escape sequence
+            df = pd.read_csv(file_path, delimiter=r'\s+')
         
         # Validate the dataframe has required columns
         required_columns = {'stock_symbol', 'allocation_percentage'}

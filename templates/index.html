@@ -5,33 +5,34 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Current Portfolio</h5>
+                <h5 class="card-title">Current Portfolio</h5>
             </div>
             <div class="card-body">
                 {% if portfolio %}
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Allocation (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for stock in portfolio %}
-                            <tr>
-                                <td>{{ stock.stock_symbol }}</td>
-                                <td>{{ "%.2f"|format(stock.allocation_percentage) }}%</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Allocation (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in portfolio %}
+                                <tr>
+                                    <td>{{ entry.stock_symbol }}</td>
+                                    <td>{{ entry.allocation_percentage }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 {% else %}
-                    <p>No portfolio data available. <a href="{{ url_for('upload_portfolio') }}">Upload your portfolio</a></p>
+                    <p>No portfolio uploaded yet. <a href="{{ url_for('upload_portfolio') }}">Upload a portfolio</a> to get started.</p>
                 {% endif %}
             </div>
         </div>
     </div>
-    
     <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -48,6 +49,13 @@
                         {% endfor %}
                     {% endif %}
                 {% endwith %}
+                
+                {% if analysis_time %}
+                    <div class="text-muted mb-3">
+                        Last updated: {{ analysis_time.strftime('%Y-%m-%d %H:%M:%S') }}
+                    </div>
+                {% endif %}
+                
                 {% if analysis is not none and not analysis.empty %}
                     <div class="analysis-results">
                         {% for _, stock in analysis.iterrows() %}

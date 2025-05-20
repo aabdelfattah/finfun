@@ -1,6 +1,84 @@
-# FinFun - Stock Portfolio Analysis Tool
+# FinFun
 
-FinFun is a web application that helps users analyze their stock portfolio using various financial metrics and provides recommendations based on the analysis.
+A financial analysis tool for stock portfolio optimization and sector-based normalization.
+
+## Project Structure
+
+```
+finfun/
+├── finfun-ts/              # TypeScript implementation
+│   ├── backend/           # Backend server
+│   └── frontend/          # Frontend application
+├── legacy/                # Legacy implementations
+│   └── python/           # Python implementation
+│       ├── src/          # Source code
+│       ├── templates/    # HTML templates
+│       ├── sample_portfolios/  # Sample portfolio files
+│       ├── requirements.txt    # Python dependencies
+│       └── portfolio.db        # SQLite database
+└── README.md
+```
+
+## TypeScript Implementation
+
+The TypeScript implementation is the current active version of the project. It includes:
+
+- Backend server with Express.js
+- Frontend application with React
+- Sector-based normalization analysis
+- Excel export functionality
+
+### Setup
+
+1. Install dependencies:
+```bash
+cd finfun-ts
+npm install
+```
+
+2. Run the development server:
+```bash
+npm run dev
+```
+
+## Legacy Python Implementation
+
+The Python implementation is maintained for reference and historical purposes. It includes:
+
+- Flask-based web server
+- Sector-based normalization analysis
+- Excel export functionality
+- SQLite database for portfolio storage
+
+### Setup
+
+1. Create a virtual environment:
+```bash
+cd legacy/python
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Run the server:
+```bash
+python src/server.py
+```
+
+## Features
+
+- Sector-based stock normalization
+- Portfolio analysis
+- Excel export with detailed calculations
+- Comparison between custom calculations and Excel formulas
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Features
 

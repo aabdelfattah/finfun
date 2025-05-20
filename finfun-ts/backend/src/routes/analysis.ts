@@ -86,7 +86,8 @@ router.post('/analyze', async (_req: Request, res: Response) => {
 
         // Calculate normalized scores for each sector
         const normalizedScores = Object.entries(stocksBySector).flatMap(([_sector, sectorStocks]) => {
-            return calculateNormalizedScores(sectorStocks);
+            // Use the same stocks as both portfolio and reference for sector-based normalization
+            return calculateNormalizedScores(sectorStocks, sectorStocks);
         });
 
         const analysisResults = [];

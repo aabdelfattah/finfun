@@ -290,3 +290,50 @@ To enable Google Sheets export:
 1. Follow this [tutorial](https://pygsheets.readthedocs.io/en/latest/authorization.html) to get OAuth credentials
 2. Save the credentials file as `client_secret.json` in the project directory
 3. Create a sheet named `FinFun` in your Google account
+
+## TODO: Model Improvements
+
+### 1. Scoring Methodology
+- [ ] Replace z-scores with percentile ranking for more intuitive scoring
+- [ ] Implement equal weights (20% each) for all metrics
+- [ ] Replace Debt/Equity with Debt/EBITDA for better leverage assessment
+
+### 2. Performance Monitoring
+- [ ] Add historical performance tracking
+- [ ] Implement backtesting for 3-6 month returns
+- [ ] Compare performance between "Buy" and "Hold" rated stocks
+- [ ] Refine recommendation thresholds based on historical data
+
+### 3. Sector Analysis
+- [ ] Add sector-specific metric weighting
+- [ ] Implement two-step classification:
+  1. Rank within sectors
+  2. Compare absolute fundamentals across sectors
+- [ ] Add sector concentration monitoring
+- [ ] Implement sector-specific metrics (e.g., growth metrics for tech)
+
+### 4. Economic Moat Analysis
+- [ ] Add Return on Invested Capital (ROIC) tracking
+  - Target: >12% for 5+ years
+  - Source: 10-K filings
+- [ ] Monitor Gross Margin Stability
+  - Target: <5% volatility over 10 years
+  - Source: 10-K filings
+- [ ] Track Market Share Growth
+  - Focus on niche dominance
+  - Source: Industry reports
+- [ ] Evaluate Intangible Assets
+  - Patent analysis
+  - Brand value assessment
+  - Sources: USPTO/Patentscope
+
+### 5. Management Quality Assessment
+- [ ] Implement Capital Allocation Score
+  - Share buyback analysis
+  - Acquisition ROIC tracking
+- [ ] Track Insider Ownership
+  - Target: >5% equity
+  - Source: SEC Form 4
+- [ ] Analyze Compensation Structure
+  - ROIC/FCF-based incentives
+  - Source: Proxy statements

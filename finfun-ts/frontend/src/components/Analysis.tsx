@@ -65,16 +65,18 @@ const Row: React.FC<RowProps> = ({ analysis, sectorMetrics }) => {
         const peScore = analysis.pe ? Math.max(0, 100 - (analysis.pe / (sectorData?.metrics.pe.mean || 1)) * 50) : 0;
         const dividendScore = analysis.dividendYield ? Math.min(100, (analysis.dividendYield / (sectorData?.metrics.dividendYield.mean || 0.01)) * 50) : 0;
         const profitScore = analysis.profitMargins ? Math.min(100, (analysis.profitMargins / (sectorData?.metrics.profitMargins.mean || 0.01)) * 50) : 0;
+        const debtToEquityScore = analysis.debtToEquity ? Math.max(0, 100 - (analysis.debtToEquity / (sectorData?.metrics.debtToEquity.mean || 1)) * 50) : 0;
         const discountScore = analysis.discountAllTimeHigh ? Math.max(0, 100 - (analysis.discountAllTimeHigh / (sectorData?.metrics.discountFrom52W.mean || 0.5)) * 50) : 0;
 
         switch (type) {
             case 'health':
                 return `Health Score (${score.toFixed(0)})
-- Profit Margins: ${profitScore.toFixed(0)}`;
+- Dividend Yield: ${dividendScore.toFixed(0)}
+- Profit Margins: ${profitScore.toFixed(0)}
+- Debt/Equity: ${debtToEquityScore.toFixed(0)}`;
             case 'value':
                 return `Value Score (${score.toFixed(0)})
 - P/E Ratio: ${peScore.toFixed(0)}
-- Dividend Yield: ${dividendScore.toFixed(0)}
 - Discount from 52W High: ${discountScore.toFixed(0)}`;
             case 'total':
                 return `Total Score (${score.toFixed(0)})

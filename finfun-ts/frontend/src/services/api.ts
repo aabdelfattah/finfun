@@ -80,4 +80,9 @@ export const api = {
         const response = await apiClient.post('/sector-analysis/run');
         return response.data;
     },
+
+    getSectorMetrics: async () => {
+        const response = await apiClient.get('/sector-metrics');
+        return response.data;
+    },
 }; 

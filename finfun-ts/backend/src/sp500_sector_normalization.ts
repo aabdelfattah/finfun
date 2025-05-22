@@ -76,7 +76,8 @@ async function fetchStockData(symbols: string[]): Promise<StockData[]> {
         pe: summary.summaryDetail?.forwardPE || summary.summaryDetail?.trailingPE || null,
         discountFrom52W: summary.summaryDetail?.fiftyTwoWeekHigh && quote.regularMarketPrice
           ? (summary.summaryDetail.fiftyTwoWeekHigh - quote.regularMarketPrice) / summary.summaryDetail.fiftyTwoWeekHigh
-          : null
+          : null,
+        price: quote.regularMarketPrice || null
       });
     } catch (e) {
       console.warn(`Failed to fetch data for ${symbol}:`, e);

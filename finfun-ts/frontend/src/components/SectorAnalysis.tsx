@@ -25,18 +25,8 @@ interface SectorMetrics {
     stdev: number;
 }
 
-interface StockData {
-    symbol: string;
-    dividendYield: number | null;
-    profitMargins: number | null;
-    debtToEquity: number | null;
-    pe: number | null;
-    discountFrom52W: number | null;
-}
-
 interface SectorData {
     name: string;
-    stocks: StockData[];
     metrics: {
         dividendYield: SectorMetrics;
         profitMargins: SectorMetrics;
@@ -44,6 +34,11 @@ interface SectorData {
         pe: SectorMetrics;
         discountFrom52W: SectorMetrics;
     };
+}
+
+interface SectorAnalysisResponse {
+    data: SectorData[];
+    lastUpdated: string;
 }
 
 export const SectorAnalysis: React.FC = () => {
@@ -58,10 +53,10 @@ export const SectorAnalysis: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await api.getSectorAnalysis();
-            setSectorData(data);
-            if (data.length > 0) {
-                setLastUpdated(new Date());
+            const response = await api.getSectorAnalysis();
+            setSectorData(response.data);
+            if (response.lastUpdated) {
+                setLastUpdated(new Date(response.lastUpdated));
             }
         } catch (err: any) {
             setError('Failed to fetch sector analysis data');
@@ -179,8 +174,8 @@ export const SectorAnalysis: React.FC = () => {
                                 {sector.name}
                             </Typography>
 
-                            <Grid container spacing={2} sx={{ mb: 2 }}>
-                                <Grid item xs={12} md={6}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12}>
                                     <Typography variant="subtitle1" gutterBottom>
                                         Sector Metrics
                                     </Typography>
@@ -239,38 +234,6 @@ export const SectorAnalysis: React.FC = () => {
                                                         {formatPercentage(sector.metrics.discountFrom52W.stdev)}
                                                     </TableCell>
                                                 </TableRow>
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </Grid>
-
-                                <Grid item xs={12} md={6}>
-                                    <Typography variant="subtitle1" gutterBottom>
-                                        Top Stocks
-                                    </Typography>
-                                    <TableContainer component={Paper}>
-                                        <Table size="small">
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell>Symbol</TableCell>
-                                                    <TableCell align="right">Dividend Yield</TableCell>
-                                                    <TableCell align="right">Profit Margins</TableCell>
-                                                    <TableCell align="right">Debt/Equity</TableCell>
-                                                    <TableCell align="right">P/E Ratio</TableCell>
-                                                    <TableCell align="right">52W High Discount</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {sector.stocks.map((stock) => (
-                                                    <TableRow key={stock.symbol}>
-                                                        <TableCell>{stock.symbol}</TableCell>
-                                                        <TableCell align="right">{formatPercentage(stock.dividendYield)}</TableCell>
-                                                        <TableCell align="right">{formatPercentage(stock.profitMargins)}</TableCell>
-                                                        <TableCell align="right">{formatMetric(stock.debtToEquity)}</TableCell>
-                                                        <TableCell align="right">{formatMetric(stock.pe)}</TableCell>
-                                                        <TableCell align="right">{formatPercentage(stock.discountFrom52W)}</TableCell>
-                                                    </TableRow>
-                                                ))}
                                             </TableBody>
                                         </Table>
                                     </TableContainer>

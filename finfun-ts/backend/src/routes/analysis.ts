@@ -183,6 +183,7 @@ router.post('/analyze', async (_req: Request, res: Response) => {
             analysis.dividendYield = stockInfo.dividendYield || 0;
             analysis.profitMargins = stockInfo.profitMargins || 0;
             analysis.discountAllTimeHigh = stockInfo.discountFrom52W || 0;
+            analysis.debtToEquity = stockInfo.debtToEquity || 0;
             analysis.price = stockInfo.price || 0;
             
             return analysis;

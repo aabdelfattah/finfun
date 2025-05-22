@@ -36,6 +36,9 @@ export class StockAnalysis {
     discountAllTimeHigh: number | null;
 
     @Column("float", { nullable: true })
+    debtToEquity: number | null;
+
+    @Column("float", { nullable: true })
     price: number | null;
 
     @CreateDateColumn()

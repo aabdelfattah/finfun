@@ -6,6 +6,7 @@ export interface StockData {
     debtToEquity: number | null;
     pe: number | null;
     discountFrom52W: number | null;
+    price: number | null;
 }
 
 interface NormalizedScore {

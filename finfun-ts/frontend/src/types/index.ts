@@ -18,6 +18,7 @@ export interface StockAnalysis {
     dividendYield: number | null;
     profitMargins: number | null;
     discountAllTimeHigh: number | null;
+    debtToEquity: number | null;
     price: number | null;
     analyzedAt: string;
 } 

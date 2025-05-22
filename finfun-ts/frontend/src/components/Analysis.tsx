@@ -13,6 +13,7 @@ import {
     LinearProgress,
     Collapse,
     IconButton,
+    Tooltip,
 } from '@mui/material';
 import { Refresh as RefreshIcon, KeyboardArrowDown as KeyboardArrowDownIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
 import { api } from '../services/api';
@@ -58,6 +59,28 @@ const Row: React.FC<RowProps> = ({ analysis, sectorMetrics }) => {
         if (score >= 60) return 'info.main';
         if (score >= 40) return 'warning.main';
         return 'error.main';
+    };
+
+    const getScoreTooltip = (score: number, type: 'health' | 'value' | 'total') => {
+        const peScore = analysis.pe ? Math.max(0, 100 - (analysis.pe / (sectorData?.metrics.pe.mean || 1)) * 50) : 0;
+        const dividendScore = analysis.dividendYield ? Math.min(100, (analysis.dividendYield / (sectorData?.metrics.dividendYield.mean || 0.01)) * 50) : 0;
+        const profitScore = analysis.profitMargins ? Math.min(100, (analysis.profitMargins / (sectorData?.metrics.profitMargins.mean || 0.01)) * 50) : 0;
+        const discountScore = analysis.discountAllTimeHigh ? Math.max(0, 100 - (analysis.discountAllTimeHigh / (sectorData?.metrics.discountFrom52W.mean || 0.5)) * 50) : 0;
+
+        switch (type) {
+            case 'health':
+                return `Health Score (${score.toFixed(0)})
+- Profit Margins: ${profitScore.toFixed(0)}`;
+            case 'value':
+                return `Value Score (${score.toFixed(0)})
+- P/E Ratio: ${peScore.toFixed(0)}
+- Dividend Yield: ${dividendScore.toFixed(0)}
+- Discount from 52W High: ${discountScore.toFixed(0)}`;
+            case 'total':
+                return `Total Score (${score.toFixed(0)})
+- Health Score: ${analysis.healthScore.toFixed(0)}
+- Value Score: ${analysis.valueScore.toFixed(0)}`;
+        }
     };
 
     const getMetricColor = (value: number | null, mean: number, stdev: number, lowerIsBetter: boolean) => {
@@ -168,73 +191,79 @@ const Row: React.FC<RowProps> = ({ analysis, sectorMetrics }) => {
                 <TableCell>{analysis.sector}</TableCell>
                 <TableCell>${analysis.price?.toFixed(2) ?? 'N/A'}</TableCell>
                 <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box sx={{ width: '100%', mr: 1 }}>
-                            <LinearProgress
-                                variant="determinate"
-                                value={analysis.healthScore}
-                                sx={{
-                                    height: 10,
-                                    borderRadius: 5,
-                                    backgroundColor: 'grey.200',
-                                    '& .MuiLinearProgress-bar': {
-                                        backgroundColor: getScoreColor(analysis.healthScore),
-                                    },
-                                }}
-                            />
+                    <Tooltip title={getScoreTooltip(analysis.healthScore, 'health')} arrow>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ width: '100%', mr: 1 }}>
+                                <LinearProgress
+                                    variant="determinate"
+                                    value={analysis.healthScore}
+                                    sx={{
+                                        height: 10,
+                                        borderRadius: 5,
+                                        backgroundColor: 'grey.200',
+                                        '& .MuiLinearProgress-bar': {
+                                            backgroundColor: getScoreColor(analysis.healthScore),
+                                        },
+                                    }}
+                                />
+                            </Box>
+                            <Box sx={{ minWidth: 35 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    {analysis.healthScore.toFixed(0)}
+                                </Typography>
+                            </Box>
                         </Box>
-                        <Box sx={{ minWidth: 35 }}>
-                            <Typography variant="body2" color="text.secondary">
-                                {analysis.healthScore.toFixed(0)}
-                            </Typography>
-                        </Box>
-                    </Box>
+                    </Tooltip>
                 </TableCell>
                 <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box sx={{ width: '100%', mr: 1 }}>
-                            <LinearProgress
-                                variant="determinate"
-                                value={analysis.valueScore}
-                                sx={{
-                                    height: 10,
-                                    borderRadius: 5,
-                                    backgroundColor: 'grey.200',
-                                    '& .MuiLinearProgress-bar': {
-                                        backgroundColor: getScoreColor(analysis.valueScore),
-                                    },
-                                }}
-                            />
+                    <Tooltip title={getScoreTooltip(analysis.valueScore, 'value')} arrow>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ width: '100%', mr: 1 }}>
+                                <LinearProgress
+                                    variant="determinate"
+                                    value={analysis.valueScore}
+                                    sx={{
+                                        height: 10,
+                                        borderRadius: 5,
+                                        backgroundColor: 'grey.200',
+                                        '& .MuiLinearProgress-bar': {
+                                            backgroundColor: getScoreColor(analysis.valueScore),
+                                        },
+                                    }}
+                                />
+                            </Box>
+                            <Box sx={{ minWidth: 35 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    {analysis.valueScore.toFixed(0)}
+                                </Typography>
+                            </Box>
                         </Box>
-                        <Box sx={{ minWidth: 35 }}>
-                            <Typography variant="body2" color="text.secondary">
-                                {analysis.valueScore.toFixed(0)}
-                            </Typography>
-                        </Box>
-                    </Box>
+                    </Tooltip>
                 </TableCell>
                 <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box sx={{ width: '100%', mr: 1 }}>
-                            <LinearProgress
-                                variant="determinate"
-                                value={analysis.totalScore}
-                                sx={{
-                                    height: 10,
-                                    borderRadius: 5,
-                                    backgroundColor: 'grey.200',
-                                    '& .MuiLinearProgress-bar': {
-                                        backgroundColor: getScoreColor(analysis.totalScore),
-                                    },
-                                }}
-                            />
+                    <Tooltip title={getScoreTooltip(analysis.totalScore, 'total')} arrow>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ width: '100%', mr: 1 }}>
+                                <LinearProgress
+                                    variant="determinate"
+                                    value={analysis.totalScore}
+                                    sx={{
+                                        height: 10,
+                                        borderRadius: 5,
+                                        backgroundColor: 'grey.200',
+                                        '& .MuiLinearProgress-bar': {
+                                            backgroundColor: getScoreColor(analysis.totalScore),
+                                        },
+                                    }}
+                                />
+                            </Box>
+                            <Box sx={{ minWidth: 35 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    {analysis.totalScore.toFixed(0)}
+                                </Typography>
+                            </Box>
                         </Box>
-                        <Box sx={{ minWidth: 35 }}>
-                            <Typography variant="body2" color="text.secondary">
-                                {analysis.totalScore.toFixed(0)}
-                            </Typography>
-                        </Box>
-                    </Box>
+                    </Tooltip>
                 </TableCell>
                 <TableCell>{analysis.recommendation}</TableCell>
             </TableRow>
@@ -283,6 +312,19 @@ const Row: React.FC<RowProps> = ({ analysis, sectorMetrics }) => {
                                                 stdev={sectorData?.metrics.profitMargins.stdev || 0}
                                                 formatValue={(v) => `${(v * 100).toFixed(2)}%`}
                                                 lowerIsBetter={false}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell>Debt/Equity</TableCell>
+                                        <TableCell align="right">{analysis.debtToEquity ? analysis.debtToEquity.toFixed(2) : 'N/A'}</TableCell>
+                                        <TableCell>
+                                            <MetricBar 
+                                                value={analysis.debtToEquity}
+                                                mean={sectorData?.metrics.debtToEquity.mean || 0}
+                                                stdev={sectorData?.metrics.debtToEquity.stdev || 0}
+                                                formatValue={(v) => v.toFixed(2)}
+                                                lowerIsBetter={true}
                                             />
                                         </TableCell>
                                     </TableRow>

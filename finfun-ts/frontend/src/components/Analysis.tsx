@@ -447,7 +447,7 @@ export const Analysis: React.FC = () => {
 
                 {!loading && !error && analysis.length > 0 && analyzedAt && (
                     <Alert severity="success">
-                        Analysis completed successfully. Last updated: {formatDate(analyzedAt)}
+                        Analysis completed successfully. Last analyzed: {formatDate(analyzedAt)}
                     </Alert>
                 )}
 

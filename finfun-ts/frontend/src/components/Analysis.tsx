@@ -14,6 +14,8 @@ import {
     Collapse,
     IconButton,
     Tooltip,
+    Alert,
+    Stack,
 } from '@mui/material';
 import { Refresh as RefreshIcon, KeyboardArrowDown as KeyboardArrowDownIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
 import { api } from '../services/api';
@@ -358,6 +360,7 @@ export const Analysis: React.FC = () => {
     const [sectorMetrics, setSectorMetrics] = useState<SectorData[]>([]);
     const [analyzedAt, setAnalyzedAt] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         loadAnalysis();
@@ -366,10 +369,15 @@ export const Analysis: React.FC = () => {
 
     const loadAnalysis = async () => {
         try {
+            setError(null);
             const data = await api.getAnalysis();
             setAnalysis(data);
+            if (data.length > 0 && data[0].analyzedAt) {
+                setAnalyzedAt(data[0].analyzedAt);
+            }
         } catch (error) {
             console.error('Failed to load analysis:', error);
+            setError('Failed to load analysis data');
         }
     };
 
@@ -384,61 +392,87 @@ export const Analysis: React.FC = () => {
 
     const handleAnalyze = async () => {
         setLoading(true);
+        setError(null);
         try {
             const response = await api.performAnalysis();
             setAnalysis(response.analyses);
             setAnalyzedAt(response.analyzedAt);
         } catch (error) {
             console.error('Failed to perform analysis:', error);
+            setError('Failed to perform analysis');
         } finally {
             setLoading(false);
         }
     };
 
+    const formatDate = (date: string) => {
+        return new Date(date).toLocaleString();
+    };
+
     return (
         <Box sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Box>
-                    <Typography variant="h5">Stock Analysis</Typography>
-                    {analyzedAt && (
-                        <Typography variant="body2" color="text.secondary">
-                            Last analyzed: {new Date(analyzedAt).toLocaleString()}
-                        </Typography>
-                    )}
+            <Stack spacing={2}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h4">Stock Analysis</Typography>
+                    <Button
+                        variant="contained"
+                        onClick={handleAnalyze}
+                        disabled={loading}
+                        startIcon={<RefreshIcon />}
+                    >
+                        {loading ? 'Analyzing...' : 'Run New Analysis'}
+                    </Button>
                 </Box>
-                <Button
-                    variant="contained"
-                    onClick={handleAnalyze}
-                    disabled={loading}
-                    startIcon={<RefreshIcon />}
-                >
-                    Analyze
-                </Button>
-            </Box>
 
-            {loading && <LinearProgress sx={{ mb: 3 }} />}
+                {error && (
+                    <Alert severity="error">
+                        {error}
+                    </Alert>
+                )}
 
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell />
-                            <TableCell>Symbol</TableCell>
-                            <TableCell>Sector</TableCell>
-                            <TableCell>Price</TableCell>
-                            <TableCell>Health Score</TableCell>
-                            <TableCell>Value Score</TableCell>
-                            <TableCell>Total Score</TableCell>
-                            <TableCell>Recommendation</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {analysis.map((item) => (
-                            <Row key={item.id} analysis={item} sectorMetrics={sectorMetrics} />
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                {loading && (
+                    <Box>
+                        <Alert severity="info" sx={{ mb: 1 }}>
+                            Running stock analysis...
+                        </Alert>
+                        <LinearProgress />
+                    </Box>
+                )}
+
+                {!loading && !error && analysis.length === 0 && (
+                    <Alert severity="info">
+                        No stock analysis data available. Click "Run New Analysis" to generate the data.
+                    </Alert>
+                )}
+
+                {!loading && !error && analysis.length > 0 && analyzedAt && (
+                    <Alert severity="success">
+                        Analysis completed successfully. Last updated: {formatDate(analyzedAt)}
+                    </Alert>
+                )}
+
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell />
+                                <TableCell>Symbol</TableCell>
+                                <TableCell>Sector</TableCell>
+                                <TableCell>Price</TableCell>
+                                <TableCell>Health Score</TableCell>
+                                <TableCell>Value Score</TableCell>
+                                <TableCell>Total Score</TableCell>
+                                <TableCell>Recommendation</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {analysis.map((item) => (
+                                <Row key={item.id} analysis={item} sectorMetrics={sectorMetrics} />
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Stack>
         </Box>
     );
 }; 

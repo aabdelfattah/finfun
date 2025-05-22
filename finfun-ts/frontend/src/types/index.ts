@@ -9,6 +9,7 @@ export interface PortfolioEntry {
 export interface StockAnalysis {
     id: number;
     stockSymbol: string;
+    sector: string;
     healthScore: number;
     valueScore: number;
     totalScore: number;
@@ -17,5 +18,6 @@ export interface StockAnalysis {
     dividendYield: number | null;
     profitMargins: number | null;
     discountAllTimeHigh: number | null;
+    price: number | null;
     analyzedAt: string;
 } 

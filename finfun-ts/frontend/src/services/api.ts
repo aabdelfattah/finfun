@@ -65,7 +65,7 @@ export const api = {
         return response.data;
     },
 
-    performAnalysis: async (): Promise<StockAnalysis[]> => {
+    performAnalysis: async (): Promise<{ analyses: StockAnalysis[]; analyzedAt: string }> => {
         const response = await apiClient.post('/analysis/analyze');
         return response.data;
     },

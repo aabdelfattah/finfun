@@ -16,8 +16,14 @@ import { Refresh as RefreshIcon } from '@mui/icons-material';
 import { api } from '../services/api';
 import { StockAnalysis } from '../types';
 
+interface AnalysisResponse {
+    analyses: StockAnalysis[];
+    analyzedAt: string;
+}
+
 export const Analysis: React.FC = () => {
     const [analysis, setAnalysis] = useState<StockAnalysis[]>([]);
+    const [analyzedAt, setAnalyzedAt] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -36,8 +42,9 @@ export const Analysis: React.FC = () => {
     const handleAnalyze = async () => {
         setLoading(true);
         try {
-            const data = await api.performAnalysis();
-            setAnalysis(data);
+            const response = await api.performAnalysis();
+            setAnalysis(response.analyses);
+            setAnalyzedAt(response.analyzedAt);
         } catch (error) {
             console.error('Failed to perform analysis:', error);
         } finally {
@@ -55,7 +62,14 @@ export const Analysis: React.FC = () => {
     return (
         <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h5">Stock Analysis</Typography>
+                <Box>
+                    <Typography variant="h5">Stock Analysis</Typography>
+                    {analyzedAt && (
+                        <Typography variant="body2" color="text.secondary">
+                            Last analyzed: {new Date(analyzedAt).toLocaleString()}
+                        </Typography>
+                    )}
+                </Box>
                 <Button
                     variant="contained"
                     onClick={handleAnalyze}
@@ -73,6 +87,8 @@ export const Analysis: React.FC = () => {
                     <TableHead>
                         <TableRow>
                             <TableCell>Symbol</TableCell>
+                            <TableCell>Sector</TableCell>
+                            <TableCell>Price</TableCell>
                             <TableCell>Health Score</TableCell>
                             <TableCell>Value Score</TableCell>
                             <TableCell>Total Score</TableCell>
@@ -87,6 +103,8 @@ export const Analysis: React.FC = () => {
                         {analysis.map((item) => (
                             <TableRow key={item.id}>
                                 <TableCell>{item.stockSymbol}</TableCell>
+                                <TableCell>{item.sector}</TableCell>
+                                <TableCell>${item.price?.toFixed(2) ?? 'N/A'}</TableCell>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                         <Box sx={{ width: '100%', mr: 1 }}>

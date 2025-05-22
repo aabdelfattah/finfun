@@ -8,6 +8,9 @@ export class StockAnalysis {
     @Column()
     stockSymbol: string;
 
+    @Column({ nullable: true })
+    sector: string;
+
     @Column("float")
     healthScore: number;
 
@@ -21,16 +24,19 @@ export class StockAnalysis {
     recommendation: string;
 
     @Column("float", { nullable: true })
-    pe: number;
+    pe: number | null;
 
     @Column("float", { nullable: true })
-    dividendYield: number;
+    dividendYield: number | null;
 
     @Column("float", { nullable: true })
-    profitMargins: number;
+    profitMargins: number | null;
 
     @Column("float", { nullable: true })
-    discountAllTimeHigh: number;
+    discountAllTimeHigh: number | null;
+
+    @Column("float", { nullable: true })
+    price: number | null;
 
     @CreateDateColumn()
     analyzedAt: Date;

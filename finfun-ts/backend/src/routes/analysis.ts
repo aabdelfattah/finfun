@@ -8,6 +8,7 @@ import { StockData, calculateNormalizedScores } from '../utils/analysisUtils';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as XLSX from 'xlsx';
+import { In, Not } from 'typeorm';
 
 const router = Router();
 
@@ -58,11 +59,32 @@ function getRecommendation(totalScore: number): string {
 router.get('/', async (_req: Request, res: Response) => {
     try {
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
+        const portfolioRepository = AppDataSource.getRepository(Portfolio);
+
+        // Get current portfolio symbols
+        const portfolio = await portfolioRepository.find();
+        const currentSymbols = portfolio.map(p => p.stockSymbol);
+
+        // Get analyses only for current portfolio stocks
         const analyses = await analysisRepository.find({
+            where: {
+                stockSymbol: In(currentSymbols)
+            },
             order: {
                 analyzedAt: 'DESC'
             }
         });
+
+        // Delete any analyses for stocks not in current portfolio
+        const analysesToDelete = await analysisRepository.find({
+            where: {
+                stockSymbol: Not(In(currentSymbols))
+            }
+        });
+        if (analysesToDelete.length > 0) {
+            await analysisRepository.remove(analysesToDelete);
+        }
+
         res.json(analyses);
     } catch (error) {
         console.error('Error fetching analyses:', error);
@@ -100,99 +122,83 @@ function loadSectorReferenceData(): Record<string, StockData[]> {
     }, {});
 }
 
-// Perform new analysis
+// Analyze portfolio
 router.post('/analyze', async (_req: Request, res: Response) => {
     try {
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
-        const sectorMetricsRepository = AppDataSource.getRepository(SectorMetrics);
 
+        // Get current portfolio
         const portfolio = await portfolioRepository.find();
-        if (!portfolio.length) {
-            return res.status(400).json({ error: 'No portfolio data available' });
+        const currentSymbols = portfolio.map(p => p.stockSymbol);
+
+        // Delete ALL previous analyses
+        await analysisRepository.clear();
+
+        // Collect stock data for current portfolio
+        const stockData: StockData[] = [];
+        for (const stock of portfolio) {
+            try {
+                // Fetch quote data for current price and 52-week high
+                const quote = await yahooFinance.quote(stock.stockSymbol);
+                
+                // Fetch detailed financial data
+                const summary = await yahooFinance.quoteSummary(stock.stockSymbol, {
+                    modules: ['assetProfile', 'summaryDetail', 'defaultKeyStatistics', 'financialData']
+                });
+
+                stockData.push({
+                    symbol: stock.stockSymbol,
+                    sector: summary.assetProfile?.sector || 'Unknown',
+                    dividendYield: summary.summaryDetail?.dividendYield || null,
+                    profitMargins: summary.defaultKeyStatistics?.profitMargins || null,
+                    debtToEquity: summary.financialData?.debtToEquity || null,
+                    pe: summary.summaryDetail?.forwardPE || summary.summaryDetail?.trailingPE || null,
+                    discountFrom52W: summary.summaryDetail?.fiftyTwoWeekHigh && quote.regularMarketPrice
+                        ? (summary.summaryDetail.fiftyTwoWeekHigh - quote.regularMarketPrice) / summary.summaryDetail.fiftyTwoWeekHigh
+                        : null,
+                    price: quote.regularMarketPrice || null
+                });
+            } catch (error) {
+                console.error(`Error fetching data for ${stock.stockSymbol}:`, error);
+            }
         }
 
-        // Load sector metrics
-        const sectorMetrics = await sectorMetricsRepository.find();
-        const metricsBySector = sectorMetrics.reduce((acc, metric) => {
-            acc[metric.sector] = metric;
-            return acc;
-        }, {} as Record<string, SectorMetrics>);
+        // Calculate normalized scores
+        const normalizedScores = calculateNormalizedScores(stockData, stockData);
 
-        // Collect all stock data first
-        const stocksData: StockData[] = [];
-        for (const p of portfolio) {
-            const rawQuote = await yahooFinance.quote(p.stockSymbol);
-            const quote = assertQuoteData(rawQuote);
-            
-            stocksData.push({
-                symbol: p.stockSymbol,
-                sector: quote.sector || 'Unknown',
-                dividendYield: quote.dividendYield || null,
-                profitMargins: quote.profitMargins || null,
-                debtToEquity: quote.debtToEquity || null,
-                pe: quote.trailingPE || null,
-                discountFrom52W: calculateDiscountFromATH(quote)
-            });
-        }
-
-        // Group stocks by sector
-        const stocksBySector = stocksData.reduce((acc, stock) => {
-            if (!acc[stock.sector]) {
-                acc[stock.sector] = [];
-            }
-            acc[stock.sector].push(stock);
-            return acc;
-        }, {} as Record<string, StockData[]>);
-
-        // Calculate normalized scores for each sector using stored metrics
-        const normalizedScores = Object.entries(stocksBySector).flatMap(([sector, sectorStocks]) => {
-            const sectorMetric = metricsBySector[sector];
-            if (!sectorMetric) {
-                console.warn(`No metrics found for sector: ${sector}`);
-                return calculateNormalizedScores(sectorStocks, sectorStocks); // Fallback to portfolio-only normalization
-            }
-
-            // Create reference set from sector metrics
-            const referenceSet: StockData[] = [{
-                symbol: 'REFERENCE',
-                sector: sector,
-                dividendYield: sectorMetric.dividendYieldMean,
-                profitMargins: sectorMetric.profitMarginsMean,
-                debtToEquity: sectorMetric.debtToEquityMean,
-                pe: sectorMetric.peMean,
-                discountFrom52W: sectorMetric.discountFrom52WMean
-            }];
-
-            return calculateNormalizedScores(sectorStocks, referenceSet);
-        });
-
-        const analysisResults = [];
-
-        // Save analysis results
-        for (const stock of normalizedScores) {
+        // Save analyses for current portfolio stocks
+        const analyses = normalizedScores.map(score => {
             const analysis = new StockAnalysis();
-            analysis.stockSymbol = stock.symbol;
-            analysis.healthScore = stock.healthScore;
-            analysis.valueScore = stock.valueScore;
-            analysis.totalScore = stock.totalScore;
-            analysis.recommendation = getRecommendation(stock.totalScore);
+            analysis.stockSymbol = score.symbol;
+            analysis.sector = stockData.find(s => s.symbol === score.symbol)?.sector || 'Unknown';
+            analysis.healthScore = score.healthScore;
+            analysis.valueScore = score.valueScore;
+            analysis.totalScore = score.totalScore;
+            analysis.recommendation = getRecommendation(score.totalScore);
             
             // Save original metrics
-            const stockData = stocksData.find(s => s.symbol === stock.symbol)!;
-            analysis.pe = stockData.pe || 0;
-            analysis.dividendYield = stockData.dividendYield || 0;
-            analysis.profitMargins = stockData.profitMargins || 0;
-            analysis.discountAllTimeHigh = stockData.discountFrom52W || 0;
+            const stockInfo = stockData.find(s => s.symbol === score.symbol)!;
+            analysis.pe = stockInfo.pe || 0;
+            analysis.dividendYield = stockInfo.dividendYield || 0;
+            analysis.profitMargins = stockInfo.profitMargins || 0;
+            analysis.discountAllTimeHigh = stockInfo.discountFrom52W || 0;
+            analysis.price = stockInfo.price || 0;
+            
+            return analysis;
+        });
 
-            await analysisRepository.save(analysis);
-            analysisResults.push(analysis);
-        }
+        const savedAnalyses = await analysisRepository.save(analyses);
+        const analyzedAt = savedAnalyses[0]?.analyzedAt || new Date();
 
-        return res.json(analysisResults);
+        res.json({ 
+            message: 'Analysis completed successfully', 
+            analyses: savedAnalyses,
+            analyzedAt: analyzedAt
+        });
     } catch (error) {
-        console.error('Error performing analysis:', error);
-        return res.status(500).json({ error: 'Failed to perform analysis' });
+        console.error('Error analyzing portfolio:', error);
+        res.status(500).json({ error: 'Failed to analyze portfolio' });
     }
 });
 

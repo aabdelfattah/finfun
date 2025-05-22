@@ -1,33 +1,42 @@
 import yahooFinance from 'yahoo-finance2';
 import * as XLSX from 'xlsx';
 import path from 'path';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
 import { calculateNormalizedScores, StockData } from './utils/analysisUtils';
+
+// Example portfolio (subset of S&P 500)
+const PORTFOLIO_TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'META'];
 
 // Fetch S&P 500 tickers and sectors from Wikipedia
 async function fetchSP500TickersAndSectors(): Promise<{ symbol: string, sector: string }[]> {
   const url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies';
-  const { data } = await axios.get(url);
-  const $ = cheerio.load(data);
-  const table = $('table.wikitable').first();
-  const result: { symbol: string, sector: string }[] = [];
+  const response = await fetch(url);
+  const text = await response.text();
+  const tableMatch = text.match(/<table[^>]*>[\s\S]*?<\/table>/);
+  if (!tableMatch) {
+    throw new Error('Could not find S&P 500 table');
+  }
 
-  table.find('tbody tr').each((i, row) => {
-    if (i === 0) return; // skip header
-    const cols = $(row).find('td');
-    const symbol = $(cols[0]).text().trim();
-    const sector = $(cols[3]).text().trim();
-    if (symbol && sector) {
-      result.push({ symbol, sector });
+  const table = tableMatch[0];
+  const rows = table.match(/<tr>[\s\S]*?<\/tr>/g) || [];
+  const stocks: { symbol: string; sector: string }[] = [];
+
+  for (const row of rows.slice(1)) { // Skip header row
+    const cells = row.match(/<td[^>]*>[\s\S]*?<\/td>/g) ?? [];
+    if (cells.length >= 4) { // Make sure we have enough cells
+      const symbolMatch = cells[0]?.match(/>([^<]+)</);
+      const sectorMatch = cells[3]?.match(/>([^<]+)</);
+      if (symbolMatch && sectorMatch) {
+        const symbol = symbolMatch[1];
+        const sector = sectorMatch[1];
+        if (symbol && sector) {
+          stocks.push({ symbol, sector });
+        }
+      }
     }
-  });
+  }
 
-  return result;
+  return stocks;
 }
-
-// Example portfolio (subset of S&P 500)
-const PORTFOLIO_TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'META'];
 
 async function fetchStockData(symbols: string[]): Promise<StockData[]> {
   const stocks: StockData[] = [];
@@ -62,24 +71,19 @@ async function fetchStockData(symbols: string[]): Promise<StockData[]> {
       stocks.push({
         symbol,
         sector: summary.assetProfile?.sector || 'Unknown',
-        dividendYield: summary.summaryDetail?.dividendYield || 0, // Use 0 for no dividend
+        dividendYield: summary.summaryDetail?.dividendYield || 0,
         profitMargins: summary.defaultKeyStatistics?.profitMargins || null,
         debtToEquity: summary.financialData?.debtToEquity || null,
         pe: summary.summaryDetail?.forwardPE || summary.summaryDetail?.trailingPE || null,
-        discountAllTimeHigh: calculateDiscountFrom52WeekHigh(quote)
+        discountFrom52W: quote.regularMarketDayHigh && quote.regularMarketPrice
+          ? (quote.regularMarketDayHigh - quote.regularMarketPrice) / quote.regularMarketDayHigh
+          : null
       });
     } catch (e) {
       console.warn(`Failed to fetch data for ${symbol}:`, e);
     }
   }
   return stocks;
-}
-
-function calculateDiscountFrom52WeekHigh(quote: any): number | null {
-  if (!quote.fiftyTwoWeekHigh || !quote.regularMarketPrice) {
-    return null;
-  }
-  return (quote.fiftyTwoWeekHigh - quote.regularMarketPrice) / quote.fiftyTwoWeekHigh;
 }
 
 async function main() {
@@ -134,7 +138,7 @@ async function main() {
       { name: 'Profit Margins', key: 'profitMargins' as keyof StockData },
       { name: 'Debt to Equity', key: 'debtToEquity' as keyof StockData },
       { name: 'Dividend Yield', key: 'dividendYield' as keyof StockData },
-      { name: 'Discount from 52W High', key: 'discountAllTimeHigh' as keyof StockData }
+      { name: 'Discount from 52W High', key: 'discountFrom52W' as keyof StockData }
     ];
 
     metrics.forEach(({ name, key }) => {
@@ -176,7 +180,7 @@ async function main() {
     'Profit Margins': { t: 'n', v: stock.profitMargins || null },
     'Debt to Equity': { t: 'n', v: stock.debtToEquity || null },
     'P/E Ratio': { t: 'n', v: stock.pe || null },
-    'Discount from 52W High': { t: 'n', v: stock.discountAllTimeHigh || null }
+    'Discount from 52W High': { t: 'n', v: stock.discountFrom52W || null }
   }));
   const wsRaw = XLSX.utils.json_to_sheet(rawData);
   XLSX.utils.book_append_sheet(wb, wsRaw, 'Portfolio Raw');
@@ -189,7 +193,7 @@ async function main() {
     'Profit Margins': { t: 'n', v: stock.profitMargins || null },
     'Debt to Equity': { t: 'n', v: stock.debtToEquity || null },
     'P/E Ratio': { t: 'n', v: stock.pe || null },
-    'Discount from 52W High': { t: 'n', v: stock.discountAllTimeHigh || null }
+    'Discount from 52W High': { t: 'n', v: stock.discountFrom52W || null }
   }));
 
   // Calculate our means and standard deviations
@@ -209,7 +213,7 @@ async function main() {
     profitMargins: calculateStats('profitMargins'),
     debtToEquity: calculateStats('debtToEquity'),
     pe: calculateStats('pe'),
-    discountAllTimeHigh: calculateStats('discountAllTimeHigh')
+    discountFrom52W: calculateStats('discountFrom52W')
   };
 
   // Add our calculated summary rows
@@ -220,7 +224,7 @@ async function main() {
     'Profit Margins': { t: 'n', v: stats.profitMargins.mean },
     'Debt to Equity': { t: 'n', v: stats.debtToEquity.mean },
     'P/E Ratio': { t: 'n', v: stats.pe.mean },
-    'Discount from 52W High': { t: 'n', v: stats.discountAllTimeHigh.mean }
+    'Discount from 52W High': { t: 'n', v: stats.discountFrom52W.mean }
   });
 
   refData.push({
@@ -230,7 +234,7 @@ async function main() {
     'Profit Margins': { t: 'n', v: stats.profitMargins.stdDev },
     'Debt to Equity': { t: 'n', v: stats.debtToEquity.stdDev },
     'P/E Ratio': { t: 'n', v: stats.pe.stdDev },
-    'Discount from 52W High': { t: 'n', v: stats.discountAllTimeHigh.stdDev }
+    'Discount from 52W High': { t: 'n', v: stats.discountFrom52W.stdDev }
   });
 
   // Add empty rows for Excel formulas
@@ -307,7 +311,7 @@ async function main() {
       profitMargins: stock.profitMargins || 0,
       debtToEquity: stock.debtToEquity || 0,
       pe: stock.pe || 0,
-      discountFrom52W: stock.discountAllTimeHigh || 0
+      discountFrom52W: stock.discountFrom52W || 0
     };
 
     // Create Excel formulas that handle N/A values
@@ -330,7 +334,7 @@ async function main() {
           case 'D': return s.profitMargins || 0;
           case 'E': return s.debtToEquity || 0;
           case 'F': return s.pe || 0;
-          case 'G': return s.discountAllTimeHigh || 0;
+          case 'G': return s.discountFrom52W || 0;
           default: return 0;
         }
       }).filter(v => v !== 0);
@@ -355,7 +359,7 @@ async function main() {
       'P/E Ratio': { t: 'n', v: stock.pe || null },
       'Our P/E Ratio Z-Score': { t: 'n', v: ourZScore(rawValues.pe, 'F') },
       'Excel P/E Ratio Z-Score': createZScoreFormula(rawValues.pe, 'F'),
-      'Discount from 52W High': { t: 'n', v: stock.discountAllTimeHigh || null },
+      'Discount from 52W High': { t: 'n', v: stock.discountFrom52W || null },
       'Our Discount Z-Score': { t: 'n', v: ourZScore(rawValues.discountFrom52W, 'G') },
       'Excel Discount Z-Score': createZScoreFormula(rawValues.discountFrom52W, 'G')
     };
@@ -389,6 +393,37 @@ async function main() {
   const excelPath = path.join(__dirname, 'portfolio_sector_normalization.xlsx');
   XLSX.writeFile(wb, excelPath);
   console.log(`\nResults written to ${excelPath}`);
+
+  // Output sector data as JSON for the API
+  const sectorData = Object.entries(sectorMap).map(([sector]) => {
+    const metrics = {
+      dividendYield: calculateStats('dividendYield'),
+      profitMargins: calculateStats('profitMargins'),
+      debtToEquity: calculateStats('debtToEquity'),
+      pe: calculateStats('pe'),
+      discountFrom52W: calculateStats('discountFrom52W')
+    };
+
+    return {
+      name: sector,
+      metrics: {
+        dividendYield: { mean: metrics.dividendYield.mean, stdev: metrics.dividendYield.stdDev },
+        profitMargins: { mean: metrics.profitMargins.mean, stdev: metrics.profitMargins.stdDev },
+        debtToEquity: { mean: metrics.debtToEquity.mean, stdev: metrics.debtToEquity.stdDev },
+        pe: { mean: metrics.pe.mean, stdev: metrics.pe.stdDev },
+        discountFrom52W: { mean: metrics.discountFrom52W.mean, stdev: metrics.discountFrom52W.stdDev }
+      }
+    };
+  });
+
+  // Log the data structure before stringifying
+  console.log('\nSector data structure:');
+  console.log(JSON.stringify(sectorData, null, 2));
+
+  // Output JSON data for the API (single line)
+  console.log('\nAPI_OUTPUT_START');
+  console.log(JSON.stringify(sectorData));
+  console.log('API_OUTPUT_END');
 }
 
 main().catch(console.error); 

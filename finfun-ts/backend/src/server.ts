@@ -4,8 +4,10 @@ import dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 import { Portfolio } from './entities/Portfolio';
 import { StockAnalysis } from './entities/StockAnalysis';
+import { SectorMetrics } from './entities/SectorMetrics';
 import portfolioRoutes from './routes/portfolio';
 import analysisRoutes from './routes/analysis';
+import sectorAnalysisRoutes from './routes/sector-analysis';
 
 dotenv.config();
 
@@ -23,7 +25,7 @@ export const AppDataSource = new DataSource({
     database: "finfun.db",
     synchronize: true,
     logging: true,
-    entities: [Portfolio, StockAnalysis],
+    entities: [Portfolio, StockAnalysis, SectorMetrics],
     migrations: [],
     subscribers: [],
 });
@@ -31,6 +33,7 @@ export const AppDataSource = new DataSource({
 // API routes
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/sector-analysis', sectorAnalysisRoutes);
 
 // Health check endpoint
 app.get('/health', (_req, res) => {

@@ -2,8 +2,12 @@ import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../server';
 import { Portfolio } from '../entities/Portfolio';
 import { StockAnalysis } from '../entities/StockAnalysis';
+import { SectorMetrics } from '../entities/SectorMetrics';
 import yahooFinance from 'yahoo-finance2';
 import { StockData, calculateNormalizedScores } from '../utils/analysisUtils';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as XLSX from 'xlsx';
 
 const router = Router();
 
@@ -19,7 +23,7 @@ interface YahooFinanceQuote {
     sector?: string;
 }
 
-// Type assertion function to ensure quote has the shape we expect
+// Helper function to assert quote data has the required shape
 function assertQuoteData(quote: any): YahooFinanceQuote {
     return {
         profitMargins: quote.profitMargins,
@@ -33,30 +37,87 @@ function assertQuoteData(quote: any): YahooFinanceQuote {
     };
 }
 
-// Get latest analysis
+// Helper function to calculate discount from all-time high
+function calculateDiscountFromATH(quote: YahooFinanceQuote): number | null {
+    if (!quote.regularMarketDayHigh || !quote.regularMarketPrice) {
+        return null;
+    }
+    return (quote.regularMarketDayHigh - quote.regularMarketPrice) / quote.regularMarketDayHigh;
+}
+
+// Helper function to get recommendation based on total score
+function getRecommendation(totalScore: number): string {
+    if (totalScore >= 80) return 'Strong Buy';
+    if (totalScore >= 60) return 'Buy';
+    if (totalScore >= 40) return 'Hold';
+    if (totalScore >= 20) return 'Sell';
+    return 'Strong Sell';
+}
+
+// Get all analyses
 router.get('/', async (_req: Request, res: Response) => {
     try {
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
-        const analysis = await analysisRepository.find({
-            order: { analyzedAt: 'DESC' }
+        const analyses = await analysisRepository.find({
+            order: {
+                analyzedAt: 'DESC'
+            }
         });
-        res.json(analysis);
+        res.json(analyses);
     } catch (error) {
-        console.error('Error fetching analysis:', error);
-        res.status(500).json({ error: 'Failed to fetch analysis' });
+        console.error('Error fetching analyses:', error);
+        res.status(500).json({ error: 'Failed to fetch analyses' });
     }
 });
+
+// Load sector reference data from Excel
+function loadSectorReferenceData(): Record<string, StockData[]> {
+    const excelPath = path.join(__dirname, 'sp500_sector_normalization.xlsx');
+    if (!fs.existsSync(excelPath)) {
+        throw new Error('Sector reference data not found. Please run sp500_sector_normalization.ts first.');
+    }
+
+    const workbook = XLSX.readFile(excelPath);
+    const sheet = workbook.Sheets['Sector Reference'];
+    const data = XLSX.utils.sheet_to_json(sheet);
+
+    // Group stocks by sector
+    return data.reduce((acc: Record<string, StockData[]>, row: any) => {
+        const sector = row.Sector;
+        if (!acc[sector]) {
+            acc[sector] = [];
+        }
+        acc[sector].push({
+            symbol: row.Symbol,
+            sector: sector,
+            dividendYield: row['Dividend Yield'] || null,
+            profitMargins: row['Profit Margins'] || null,
+            debtToEquity: row['Debt to Equity'] || null,
+            pe: row['P/E Ratio'] || null,
+            discountAllTimeHigh: row['Discount from 52W High'] || null
+        });
+        return acc;
+    }, {});
+}
 
 // Perform new analysis
 router.post('/analyze', async (_req: Request, res: Response) => {
     try {
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
+        const sectorMetricsRepository = AppDataSource.getRepository(SectorMetrics);
 
         const portfolio = await portfolioRepository.find();
         if (!portfolio.length) {
             return res.status(400).json({ error: 'No portfolio data available' });
         }
+
+        // Load sector metrics
+        const sectorMetrics = await sectorMetricsRepository.find();
+        const metricsBySector = sectorMetrics.reduce((acc, metric) => {
+            acc[metric.sector] = metric;
+            return acc;
+        }, {} as Record<string, SectorMetrics>);
 
         // Collect all stock data first
         const stocksData: StockData[] = [];
@@ -71,7 +132,7 @@ router.post('/analyze', async (_req: Request, res: Response) => {
                 profitMargins: quote.profitMargins || null,
                 debtToEquity: quote.debtToEquity || null,
                 pe: quote.trailingPE || null,
-                discountAllTimeHigh: calculateDiscountFromATH(quote)
+                discountFrom52W: calculateDiscountFromATH(quote)
             });
         }
 
@@ -84,10 +145,26 @@ router.post('/analyze', async (_req: Request, res: Response) => {
             return acc;
         }, {} as Record<string, StockData[]>);
 
-        // Calculate normalized scores for each sector
-        const normalizedScores = Object.entries(stocksBySector).flatMap(([_sector, sectorStocks]) => {
-            // Use the same stocks as both portfolio and reference for sector-based normalization
-            return calculateNormalizedScores(sectorStocks, sectorStocks);
+        // Calculate normalized scores for each sector using stored metrics
+        const normalizedScores = Object.entries(stocksBySector).flatMap(([sector, sectorStocks]) => {
+            const sectorMetric = metricsBySector[sector];
+            if (!sectorMetric) {
+                console.warn(`No metrics found for sector: ${sector}`);
+                return calculateNormalizedScores(sectorStocks, sectorStocks); // Fallback to portfolio-only normalization
+            }
+
+            // Create reference set from sector metrics
+            const referenceSet: StockData[] = [{
+                symbol: 'REFERENCE',
+                sector: sector,
+                dividendYield: sectorMetric.dividendYieldMean,
+                profitMargins: sectorMetric.profitMarginsMean,
+                debtToEquity: sectorMetric.debtToEquityMean,
+                pe: sectorMetric.peMean,
+                discountFrom52W: sectorMetric.discountFrom52WMean
+            }];
+
+            return calculateNormalizedScores(sectorStocks, referenceSet);
         });
 
         const analysisResults = [];
@@ -106,7 +183,7 @@ router.post('/analyze', async (_req: Request, res: Response) => {
             analysis.pe = stockData.pe || 0;
             analysis.dividendYield = stockData.dividendYield || 0;
             analysis.profitMargins = stockData.profitMargins || 0;
-            analysis.discountAllTimeHigh = stockData.discountAllTimeHigh || 0;
+            analysis.discountAllTimeHigh = stockData.discountFrom52W || 0;
 
             await analysisRepository.save(analysis);
             analysisResults.push(analysis);
@@ -118,19 +195,5 @@ router.post('/analyze', async (_req: Request, res: Response) => {
         return res.status(500).json({ error: 'Failed to perform analysis' });
     }
 });
-
-function calculateDiscountFromATH(quote: YahooFinanceQuote): number | null {
-    if (!quote.regularMarketDayHigh || !quote.regularMarketPrice) {
-        return null;
-    }
-    return (quote.regularMarketDayHigh - quote.regularMarketPrice) / quote.regularMarketDayHigh;
-}
-
-function getRecommendation(score: number): string {
-    if (score > 65) return 'Strong Buy';
-    if (score >= 45) return 'Buy';
-    if (score >= 30) return 'Hold';
-    return 'Sell';
-}
 
 export default router; 

@@ -5,7 +5,7 @@ export interface StockData {
     profitMargins: number | null;
     debtToEquity: number | null;
     pe: number | null;
-    discountAllTimeHigh: number | null;
+    discountFrom52W: number | null;
 }
 
 interface NormalizedScore {
@@ -36,14 +36,14 @@ export function calculateNormalizedScores(
     const refProfitMargins = referenceStocks.map(s => s.profitMargins);
     const refDebtToEquity = referenceStocks.map(s => s.debtToEquity);
     const refPERatios = referenceStocks.map(s => s.pe);
-    const refDiscounts = referenceStocks.map(s => s.discountAllTimeHigh);
+    const refDiscounts = referenceStocks.map(s => s.discountFrom52W);
 
     // Extract all values for each metric from portfolio
     const dividendYields = portfolioStocks.map(s => s.dividendYield);
     const profitMargins = portfolioStocks.map(s => s.profitMargins);
     const debtToEquity = portfolioStocks.map(s => s.debtToEquity);
     const peRatios = portfolioStocks.map(s => s.pe);
-    const discounts = portfolioStocks.map(s => s.discountAllTimeHigh);
+    const discounts = portfolioStocks.map(s => s.discountFrom52W);
 
     // Normalize each metric using reference set
     const normalizedDividendYields = normalizeParameter(dividendYields, refDividendYields);

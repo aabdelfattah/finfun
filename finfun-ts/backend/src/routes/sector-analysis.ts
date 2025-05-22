@@ -30,6 +30,9 @@ router.get('/', async (_req: Request, res: Response) => {
         const sectorMetricsRepository = AppDataSource.getRepository(SectorMetrics);
         const metrics = await sectorMetricsRepository.find();
         
+        // Get the latest timestamp from any metric
+        const latestTimestamp = metrics.length > 0 ? metrics[0].createdAt : null;
+        
         // Group metrics by sector
         const sectorData: SectorData[] = metrics.reduce((acc: SectorData[], metric) => {
             const existingSector = acc.find(s => s.name === metric.sector);
@@ -65,7 +68,10 @@ router.get('/', async (_req: Request, res: Response) => {
             return acc;
         }, []);
         
-        res.json(sectorData);
+        res.json({
+            data: sectorData,
+            lastUpdated: latestTimestamp
+        });
     } catch (error) {
         console.error('Error fetching sector analysis:', error);
         res.status(500).json({ error: 'Failed to fetch sector analysis' });

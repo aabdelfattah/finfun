@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { Portfolio } from "./Portfolio";
 
 @Entity()
 export class StockAnalysis {
@@ -40,6 +41,13 @@ export class StockAnalysis {
 
     @Column("float", { nullable: true })
     price: number | null;
+
+    @Column()
+    portfolioId: number;
+
+    @ManyToOne(() => Portfolio)
+    @JoinColumn({ name: 'portfolioId' })
+    portfolio: Portfolio;
 
     @CreateDateColumn()
     analyzedAt: Date;

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
-import { Portfolio } from './entities/Portfolio';
+import { Portfolio, PortfolioStock } from './entities/Portfolio';
 import { StockAnalysis } from './entities/StockAnalysis';
 import { SectorMetrics } from './entities/SectorMetrics';
 import { User } from './entities/User';
@@ -29,7 +29,7 @@ export const AppDataSource = new DataSource({
     database: "finfun.db",
     synchronize: true,
     logging: true,
-    entities: [Portfolio, StockAnalysis, SectorMetrics, User, Config],
+    entities: [Portfolio, PortfolioStock, StockAnalysis, SectorMetrics, User, Config],
     migrations: [],
     subscribers: [],
 });

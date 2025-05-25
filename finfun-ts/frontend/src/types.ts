@@ -1,7 +1,19 @@
-export interface PortfolioEntry {
+export interface PortfolioStock {
     id: number;
     stockSymbol: string;
     allocationPercentage: number;
+    portfolioId: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Portfolio {
+    id: number;
+    name: string;
+    userId: number;
+    stocks: PortfolioStock[];
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface BetterAlternative {
@@ -31,6 +43,7 @@ export interface StockAnalysis {
     debtToEquity: number | null;
     discountAllTimeHigh: number | null;
     price: number | null;
+    portfolioId: number;
     analyzedAt: string;
     betterAlternatives: BetterAlternative[];
 }

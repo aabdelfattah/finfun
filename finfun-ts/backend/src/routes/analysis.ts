@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../server';
-import { Portfolio } from '../entities/Portfolio';
+import { Portfolio, PortfolioStock } from '../entities/Portfolio';
 import { StockAnalysis } from '../entities/StockAnalysis';
 import { SectorMetrics } from '../entities/SectorMetrics';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
@@ -66,20 +66,26 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
 
-        // Get current user's portfolio symbols
-        const portfolio = await portfolioRepository.find({
-            where: { userId: req.user.id }
+        // Get current user's portfolio
+        const portfolio = await portfolioRepository.findOne({
+            where: { userId: req.user.id },
+            relations: ['stocks']
         });
-        const currentSymbols = portfolio.map(p => p.stockSymbol);
+
+        if (!portfolio) {
+            return res.json([]);
+        }
+
+        const currentSymbols = portfolio.stocks.map(s => s.stockSymbol);
 
         if (currentSymbols.length === 0) {
             return res.json([]);
         }
 
-        // Get analyses only for current user's portfolio stocks (but don't delete others)
+        // Get analyses only for current user's portfolio
         const analyses = await analysisRepository.find({
             where: {
-                stockSymbol: In(currentSymbols)
+                portfolioId: portfolio.id
             },
             order: {
                 analyzedAt: 'DESC'
@@ -135,18 +141,24 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
 
         // Get current user's portfolio
-        const portfolio = await portfolioRepository.find({
-            where: { userId: req.user.id }
+        const portfolio = await portfolioRepository.findOne({
+            where: { userId: req.user.id },
+            relations: ['stocks']
         });
-        const currentSymbols = portfolio.map(p => p.stockSymbol);
+
+        if (!portfolio) {
+            return res.status(400).json({ error: 'No portfolio found. Please create a portfolio first.' });
+        }
+
+        const currentSymbols = portfolio.stocks.map(s => s.stockSymbol);
 
         if (currentSymbols.length === 0) {
             return res.status(400).json({ error: 'No portfolio data found to analyze' });
         }
 
-        // Delete only previous analyses for this user's stocks
+        // Delete only previous analyses for this user's portfolio
         await analysisRepository.delete({
-            stockSymbol: In(currentSymbols)
+            portfolioId: portfolio.id
         });
 
         // Collect stock data for current user's portfolio stocks
@@ -190,6 +202,7 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
             analysis.valueScore = score.valueScore;
             analysis.totalScore = score.totalScore;
             analysis.recommendation = getRecommendation(score.totalScore);
+            analysis.portfolioId = portfolio.id; // Associate with current portfolio
             
             // Save original metrics
             const stockInfo = stockData.find(s => s.symbol === score.symbol)!;

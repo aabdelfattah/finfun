@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { PortfolioEntry, StockAnalysis } from '../types';
+import { Portfolio, StockAnalysis } from '../types';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -124,7 +124,7 @@ export const api = {
     },
 
     // Portfolio endpoints
-    getPortfolio: async (): Promise<PortfolioEntry[]> => {
+    getPortfolio: async (): Promise<Portfolio> => {
         const response = await apiClient.get('/portfolio');
         return response.data;
     },

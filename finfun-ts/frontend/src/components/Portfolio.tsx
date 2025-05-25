@@ -13,10 +13,10 @@ import {
 } from '@mui/material';
 import { Upload as UploadIcon } from '@mui/icons-material';
 import { api } from '../services/api';
-import { PortfolioEntry } from '../types';
+import { Portfolio as PortfolioType } from '../types';
 
 export const Portfolio: React.FC = () => {
-    const [portfolio, setPortfolio] = useState<PortfolioEntry[]>([]);
+    const [portfolio, setPortfolio] = useState<PortfolioType | null>(null);
 
     useEffect(() => {
         loadPortfolio();
@@ -46,7 +46,9 @@ export const Portfolio: React.FC = () => {
     return (
         <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h5">Portfolio</Typography>
+                <Typography variant="h5">
+                    {portfolio?.name || 'Portfolio'}
+                </Typography>
                 <Button
                     variant="contained"
                     component="label"
@@ -71,14 +73,20 @@ export const Portfolio: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {portfolio.map((entry) => (
-                            <TableRow key={entry.id}>
-                                <TableCell>{entry.stockSymbol}</TableCell>
+                        {portfolio?.stocks?.map((stock) => (
+                            <TableRow key={stock.id}>
+                                <TableCell>{stock.stockSymbol}</TableCell>
                                 <TableCell align="right">
-                                    {entry.allocationPercentage.toFixed(2)}
+                                    {stock.allocationPercentage.toFixed(2)}
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        )) || (
+                            <TableRow>
+                                <TableCell colSpan={2} align="center">
+                                    No stocks in portfolio
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>

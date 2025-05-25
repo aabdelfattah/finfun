@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../server';
 import { Portfolio } from '../entities/Portfolio';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import multer from 'multer';
 import csv from 'csv-parse';
 import { Readable } from 'stream';
@@ -8,11 +9,20 @@ import { Readable } from 'stream';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Get current portfolio
-router.get('/', async (_req: Request, res: Response) => {
+// Apply authentication to all portfolio routes
+router.use(authenticateToken);
+
+// Get current user's portfolio
+router.get('/', async (req: AuthRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
-        const portfolio = await portfolioRepository.find();
+        const portfolio = await portfolioRepository.find({
+            where: { userId: req.user.id }
+        });
         res.json(portfolio);
     } catch (error) {
         console.error('Error fetching portfolio:', error);
@@ -20,10 +30,14 @@ router.get('/', async (_req: Request, res: Response) => {
     }
 });
 
-// Upload portfolio from CSV
-router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
+// Upload portfolio from CSV for current user
+router.post('/upload', upload.single('file'), async (req: AuthRequest, res: Response) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
     }
 
     try {
@@ -60,14 +74,15 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
             return res.status(400).json({ error: 'No valid records found in CSV file' });
         }
 
-        // Clear existing portfolio
-        await portfolioRepository.clear();
+        // Clear existing portfolio for this user
+        await portfolioRepository.delete({ userId: req.user.id });
 
-        // Save new portfolio entries
+        // Save new portfolio entries for this user
         const portfolioEntries = records.map(record => {
             const entry = new Portfolio();
             entry.stockSymbol = record.symbol;
             entry.allocationPercentage = record.allocation;
+            entry.userId = req.user!.id;
             return entry;
         });
 

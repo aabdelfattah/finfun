@@ -1,19 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './User';
 
 @Entity()
 export class Portfolio {
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
     @Column()
-    stockSymbol: string;
+    stockSymbol!: string;
 
-    @Column("float")
-    allocationPercentage: number;
+    @Column('decimal', { precision: 5, scale: 2 })
+    allocationPercentage!: number;
+
+    @ManyToOne(() => User, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'userId' })
+    user!: User;
+
+    @Column()
+    userId!: number;
 
     @CreateDateColumn()
-    createdAt: Date;
+    createdAt!: Date;
 
     @UpdateDateColumn()
-    updatedAt: Date;
+    updatedAt!: Date;
 } 

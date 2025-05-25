@@ -11,6 +11,28 @@ const apiClient = axios.create({
     },
 });
 
+// Add request interceptor to include auth token
+apiClient.interceptors.request.use((config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+// Add response interceptor to handle auth errors
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 interface SectorMetrics {
     mean: number;
     stdev: number;
@@ -42,7 +64,65 @@ interface SectorAnalysisResponse {
     lastUpdated: string;
 }
 
+interface User {
+    id: number;
+    email: string;
+    role: 'admin' | 'user';
+}
+
+interface AuthResponse {
+    message: string;
+    token: string;
+    user: User;
+}
+
+interface Config {
+    id: number;
+    key: string;
+    value: string;
+    description?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export const api = {
+    // Auth endpoints
+    login: async (email: string, password: string): Promise<AuthResponse> => {
+        const response = await apiClient.post('/auth/login', { email, password });
+        return response.data;
+    },
+
+    register: async (email: string, password: string, role?: string): Promise<AuthResponse> => {
+        const response = await apiClient.post('/auth/register', { email, password, role });
+        return response.data;
+    },
+
+    getCurrentUser: async (): Promise<{ user: User }> => {
+        const response = await apiClient.get('/auth/me');
+        return response.data;
+    },
+
+    logout: async (): Promise<{ message: string }> => {
+        const response = await apiClient.post('/auth/logout');
+        return response.data;
+    },
+
+    // Config endpoints (admin only)
+    getConfigs: async (): Promise<{ configs: Config[] }> => {
+        const response = await apiClient.get('/config');
+        return response.data;
+    },
+
+    updateConfig: async (key: string, value: string, description?: string): Promise<{ message: string; config: Config }> => {
+        const response = await apiClient.put(`/config/${key}`, { value, description });
+        return response.data;
+    },
+
+    initializeConfigs: async (): Promise<{ message: string }> => {
+        const response = await apiClient.post('/config/initialize');
+        return response.data;
+    },
+
     // Portfolio endpoints
     getPortfolio: async (): Promise<PortfolioEntry[]> => {
         const response = await apiClient.get('/portfolio');
@@ -84,5 +164,14 @@ export const api = {
     getSectorMetrics: async () => {
         const response = await apiClient.get('/sector-metrics');
         return response.data;
+    },
+
+    checkSectorAnalysisAccess: async (): Promise<boolean> => {
+        try {
+            const response = await apiClient.get('/config/allow_user_sector_analysis');
+            return response.data.value === 'true';
+        } catch (error) {
+            return false;
+        }
     },
 }; 

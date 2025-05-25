@@ -20,7 +20,6 @@ import {
 import { Refresh as RefreshIcon, KeyboardArrowDown as KeyboardArrowDownIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
 import { api } from '../services/api';
 import { StockAnalysis } from '../types';
-
 interface AnalysisResponse {
     analyses: StockAnalysis[];
     analyzedAt: string;

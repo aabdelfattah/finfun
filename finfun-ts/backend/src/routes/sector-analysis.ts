@@ -4,6 +4,9 @@ import { promisify } from 'util';
 import * as path from 'path';
 import { AppDataSource } from '../server';
 import { SectorMetrics } from '../entities/SectorMetrics';
+import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { UserRole } from '../entities/User';
+import { isUserSectorAnalysisAllowed } from '../utils/configUtils';
 
 const router = Router();
 const execAsync = promisify(exec);
@@ -24,8 +27,31 @@ interface SectorData {
     };
 }
 
+// Middleware to check sector analysis access
+const checkSectorAnalysisAccess = async (req: AuthRequest, res: Response, next: any) => {
+    try {
+        // If user is admin, always allow access
+        if (req.user?.role === UserRole.ADMIN) {
+            return next();
+        }
+
+        // Check if normal users are allowed to access sector analysis
+        const isAllowed = await isUserSectorAnalysisAllowed();
+        if (!isAllowed) {
+            return res.status(403).json({ 
+                error: 'Access denied. Sector analysis is restricted to administrators.' 
+            });
+        }
+
+        next();
+    } catch (error) {
+        console.error('Error checking sector analysis access:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 // Get sector analysis data
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', authenticateToken, checkSectorAnalysisAccess, async (req: AuthRequest, res: Response) => {
     try {
         const sectorMetricsRepository = AppDataSource.getRepository(SectorMetrics);
         const metrics = await sectorMetricsRepository.find();
@@ -78,8 +104,8 @@ router.get('/', async (_req: Request, res: Response) => {
     }
 });
 
-// Run new sector analysis
-router.post('/run', async (_req: Request, res: Response) => {
+// Run new sector analysis (admin only)
+router.post('/run', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const scriptPath = path.join(__dirname, '..', 'sp500_sector_normalization.ts');
         

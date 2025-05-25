@@ -1,3 +1,9 @@
+export interface PortfolioEntry {
+    id: number;
+    stockSymbol: string;
+    allocationPercentage: number;
+}
+
 export interface BetterAlternative {
     stockSymbol: string;
     healthScore: number;
@@ -14,6 +20,7 @@ export interface BetterAlternative {
 export interface StockAnalysis {
     id: number;
     stockSymbol: string;
+    sector: string;
     healthScore: number;
     valueScore: number;
     totalScore: number;
@@ -22,6 +29,7 @@ export interface StockAnalysis {
     dividendYield: number | null;
     profitMargins: number | null;
     debtToEquity: number | null;
+    discountAllTimeHigh: number | null;
     price: number | null;
     analyzedAt: string;
     betterAlternatives: BetterAlternative[];

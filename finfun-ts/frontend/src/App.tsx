@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import {
     AppBar,
     Box,
@@ -16,23 +16,120 @@ import {
     useMediaQuery,
     ThemeProvider,
     createTheme,
+    Button,
+    Menu,
+    MenuItem,
+    CircularProgress,
 } from '@mui/material';
 import {
     AccountBalance as PortfolioIcon,
     Assessment as AnalysisIcon,
     Business as SectorIcon,
+    Settings as ConfigIcon,
     Brightness4 as DarkModeIcon,
     Brightness7 as LightModeIcon,
+    AccountCircle as AccountIcon,
+    ExitToApp as LogoutIcon,
 } from '@mui/icons-material';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Portfolio } from './components/Portfolio';
 import { Analysis } from './components/Analysis';
 import { SectorAnalysis } from './components/SectorAnalysis';
+import { Login } from './components/Login';
+import { Config } from './components/Config';
+import { api } from './services/api';
 
 const drawerWidth = 240;
 
-function App() {
+interface ProtectedRouteProps {
+    children: React.ReactNode;
+    adminOnly?: boolean;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false }) => {
+    const { user, isLoading, isAdmin } = useAuth();
+
+    if (isLoading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (adminOnly && !isAdmin()) {
+        return <Navigate to="/" replace />;
+    }
+
+    return <>{children}</>;
+};
+
+const SectorAnalysisRoute: React.FC = () => {
+    const { user, isAdmin } = useAuth();
+    const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const checkAccess = async () => {
+            try {
+                if (isAdmin()) {
+                    setHasAccess(true);
+                    return;
+                }
+                const access = await api.checkSectorAnalysisAccess();
+                setHasAccess(access);
+            } catch (error) {
+                setHasAccess(false);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkAccess();
+    }, [isAdmin]);
+
+    if (isLoading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (!hasAccess) {
+        return <Navigate to="/" replace />;
+    }
+
+    return <SectorAnalysis />;
+};
+
+function AppContent() {
     const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
     const [mode, setMode] = useState<'light' | 'dark'>(prefersDarkMode ? 'dark' : 'light');
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const { user, logout, isAdmin } = useAuth();
+    const [hasSectorAnalysisAccess, setHasSectorAnalysisAccess] = useState<boolean>(false);
+
+    useEffect(() => {
+        const checkAccess = async () => {
+            if (isAdmin()) {
+                setHasSectorAnalysisAccess(true);
+                return;
+            }
+            try {
+                const access = await api.checkSectorAnalysisAccess();
+                setHasSectorAnalysisAccess(access);
+            } catch (error) {
+                setHasSectorAnalysisAccess(false);
+            }
+        };
+
+        checkAccess();
+    }, [isAdmin]);
 
     const theme = useMemo(
         () =>
@@ -96,6 +193,19 @@ function App() {
         setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
     };
 
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleLogout = () => {
+        logout();
+        handleMenuClose();
+    };
+
     return (
         <ThemeProvider theme={theme}>
             <Router>
@@ -127,22 +237,42 @@ function App() {
                             >
                                 FinFun
                             </Typography>
-                            <IconButton 
-                                onClick={toggleColorMode} 
-                                color="inherit"
-                                sx={{
-                                    backgroundColor: mode === 'dark' 
-                                        ? 'rgba(255, 255, 255, 0.1)' 
-                                        : 'rgba(255, 255, 255, 0.2)',
-                                    '&:hover': {
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <IconButton 
+                                    onClick={toggleColorMode} 
+                                    color="inherit"
+                                    sx={{
                                         backgroundColor: mode === 'dark' 
-                                            ? 'rgba(255, 255, 255, 0.2)' 
-                                            : 'rgba(255, 255, 255, 0.3)',
-                                    },
-                                }}
-                            >
-                                {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-                            </IconButton>
+                                            ? 'rgba(255, 255, 255, 0.1)' 
+                                            : 'rgba(255, 255, 255, 0.2)',
+                                        '&:hover': {
+                                            backgroundColor: mode === 'dark' 
+                                                ? 'rgba(255, 255, 255, 0.2)' 
+                                                : 'rgba(255, 255, 255, 0.3)',
+                                        },
+                                    }}
+                                >
+                                    {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+                                </IconButton>
+                                <Button
+                                    color="inherit"
+                                    onClick={handleMenuOpen}
+                                    startIcon={<AccountIcon />}
+                                    sx={{ color: 'white' }}
+                                >
+                                    {user?.email}
+                                </Button>
+                                <Menu
+                                    anchorEl={anchorEl}
+                                    open={Boolean(anchorEl)}
+                                    onClose={handleMenuClose}
+                                >
+                                    <MenuItem onClick={handleLogout}>
+                                        <LogoutIcon sx={{ mr: 1 }} />
+                                        Logout
+                                    </MenuItem>
+                                </Menu>
+                            </Box>
                         </Toolbar>
                     </AppBar>
                     <Drawer
@@ -179,16 +309,30 @@ function App() {
                                     </ListItemIcon>
                                     <ListItemText primary="Analysis" />
                                 </ListItem>
-                                <ListItem button component={Link} to="/sector-analysis" sx={{ 
-                                    '&:hover': { 
-                                        backgroundColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
-                                    }
-                                }}>
-                                    <ListItemIcon>
-                                        <SectorIcon />
-                                    </ListItemIcon>
-                                    <ListItemText primary="Sector Analysis" />
-                                </ListItem>
+                                {(isAdmin() || hasSectorAnalysisAccess) && (
+                                    <ListItem button component={Link} to="/sector-analysis" sx={{ 
+                                        '&:hover': { 
+                                            backgroundColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
+                                        }
+                                    }}>
+                                        <ListItemIcon>
+                                            <SectorIcon />
+                                        </ListItemIcon>
+                                        <ListItemText primary="Sector Analysis" />
+                                    </ListItem>
+                                )}
+                                {isAdmin() && (
+                                    <ListItem button component={Link} to="/config" sx={{ 
+                                        '&:hover': { 
+                                            backgroundColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
+                                        }
+                                    }}>
+                                        <ListItemIcon>
+                                            <ConfigIcon />
+                                        </ListItemIcon>
+                                        <ListItemText primary="Configuration" />
+                                    </ListItem>
+                                )}
                             </List>
                         </Box>
                     </Drawer>
@@ -206,15 +350,41 @@ function App() {
                         <Toolbar />
                         <Container maxWidth="lg">
                             <Routes>
-                                <Route path="/" element={<Portfolio />} />
-                                <Route path="/analysis" element={<Analysis />} />
-                                <Route path="/sector-analysis" element={<SectorAnalysis />} />
+                                <Route path="/login" element={<Login />} />
+                                <Route path="/" element={
+                                    <ProtectedRoute>
+                                        <Portfolio />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="/analysis" element={
+                                    <ProtectedRoute>
+                                        <Analysis />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="/sector-analysis" element={
+                                    <ProtectedRoute>
+                                        <SectorAnalysisRoute />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="/config" element={
+                                    <ProtectedRoute adminOnly>
+                                        <Config />
+                                    </ProtectedRoute>
+                                } />
                             </Routes>
                         </Container>
                     </Box>
                 </Box>
             </Router>
         </ThemeProvider>
+    );
+}
+
+function App() {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     );
 }
 

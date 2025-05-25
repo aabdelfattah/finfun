@@ -5,9 +5,13 @@ import { DataSource } from 'typeorm';
 import { Portfolio } from './entities/Portfolio';
 import { StockAnalysis } from './entities/StockAnalysis';
 import { SectorMetrics } from './entities/SectorMetrics';
+import { User } from './entities/User';
+import { Config } from './entities/Config';
 import portfolioRoutes from './routes/portfolio';
 import analysisRoutes from './routes/analysis';
 import sectorAnalysisRoutes from './routes/sector-analysis';
+import authRoutes from './routes/auth';
+import configRoutes from './routes/config';
 
 dotenv.config();
 
@@ -25,12 +29,14 @@ export const AppDataSource = new DataSource({
     database: "finfun.db",
     synchronize: true,
     logging: true,
-    entities: [Portfolio, StockAnalysis, SectorMetrics],
+    entities: [Portfolio, StockAnalysis, SectorMetrics, User, Config],
     migrations: [],
     subscribers: [],
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/config', configRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/sector-analysis', sectorAnalysisRoutes);

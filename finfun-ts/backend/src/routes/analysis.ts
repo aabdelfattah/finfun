@@ -3,6 +3,7 @@ import { AppDataSource } from '../server';
 import { Portfolio } from '../entities/Portfolio';
 import { StockAnalysis } from '../entities/StockAnalysis';
 import { SectorMetrics } from '../entities/SectorMetrics';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import yahooFinance from 'yahoo-finance2';
 import { StockData, calculateNormalizedScores } from '../utils/analysisUtils';
 import * as fs from 'fs';
@@ -56,16 +57,26 @@ function getRecommendation(totalScore: number): string {
 }
 
 // Get all analyses
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
 
-        // Get current portfolio symbols
-        const portfolio = await portfolioRepository.find();
+        // Get current user's portfolio symbols
+        const portfolio = await portfolioRepository.find({
+            where: { userId: req.user.id }
+        });
         const currentSymbols = portfolio.map(p => p.stockSymbol);
 
-        // Get analyses only for current portfolio stocks
+        if (currentSymbols.length === 0) {
+            return res.json([]);
+        }
+
+        // Get analyses only for current user's portfolio stocks (but don't delete others)
         const analyses = await analysisRepository.find({
             where: {
                 stockSymbol: In(currentSymbols)
@@ -74,16 +85,6 @@ router.get('/', async (_req: Request, res: Response) => {
                 analyzedAt: 'DESC'
             }
         });
-
-        // Delete any analyses for stocks not in current portfolio
-        const analysesToDelete = await analysisRepository.find({
-            where: {
-                stockSymbol: Not(In(currentSymbols))
-            }
-        });
-        if (analysesToDelete.length > 0) {
-            await analysisRepository.remove(analysesToDelete);
-        }
 
         res.json(analyses);
     } catch (error) {
@@ -116,39 +117,52 @@ function loadSectorReferenceData(): Record<string, StockData[]> {
             profitMargins: row['Profit Margins'] || null,
             debtToEquity: row['Debt to Equity'] || null,
             pe: row['P/E Ratio'] || null,
-            discountAllTimeHigh: row['Discount from 52W High'] || null
+            discountFrom52W: row['Discount from 52W High'] || null,
+            price: null // Add price field to match StockData interface
         });
         return acc;
     }, {});
 }
 
 // Analyze portfolio
-router.post('/analyze', async (_req: Request, res: Response) => {
+router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
         const analysisRepository = AppDataSource.getRepository(StockAnalysis);
 
-        // Get current portfolio
-        const portfolio = await portfolioRepository.find();
+        // Get current user's portfolio
+        const portfolio = await portfolioRepository.find({
+            where: { userId: req.user.id }
+        });
         const currentSymbols = portfolio.map(p => p.stockSymbol);
 
-        // Delete ALL previous analyses
-        await analysisRepository.clear();
+        if (currentSymbols.length === 0) {
+            return res.status(400).json({ error: 'No portfolio data found to analyze' });
+        }
 
-        // Collect stock data for current portfolio
+        // Delete only previous analyses for this user's stocks
+        await analysisRepository.delete({
+            stockSymbol: In(currentSymbols)
+        });
+
+        // Collect stock data for current user's portfolio stocks
         const stockData: StockData[] = [];
-        for (const stock of portfolio) {
+        for (const symbol of currentSymbols) {
             try {
                 // Fetch quote data for current price and 52-week high
-                const quote = await yahooFinance.quote(stock.stockSymbol);
+                const quote = await yahooFinance.quote(symbol);
                 
                 // Fetch detailed financial data
-                const summary = await yahooFinance.quoteSummary(stock.stockSymbol, {
+                const summary = await yahooFinance.quoteSummary(symbol, {
                     modules: ['assetProfile', 'summaryDetail', 'defaultKeyStatistics', 'financialData']
                 });
 
                 stockData.push({
-                    symbol: stock.stockSymbol,
+                    symbol: symbol,
                     sector: summary.assetProfile?.sector || 'Unknown',
                     dividendYield: summary.summaryDetail?.dividendYield || null,
                     profitMargins: summary.defaultKeyStatistics?.profitMargins || null,
@@ -160,14 +174,14 @@ router.post('/analyze', async (_req: Request, res: Response) => {
                     price: quote.regularMarketPrice || null
                 });
             } catch (error) {
-                console.error(`Error fetching data for ${stock.stockSymbol}:`, error);
+                console.error(`Error fetching data for ${symbol}:`, error);
             }
         }
 
         // Calculate normalized scores
         const normalizedScores = calculateNormalizedScores(stockData, stockData);
 
-        // Save analyses for current portfolio stocks
+        // Save analyses for current user's portfolio stocks
         const analyses = normalizedScores.map(score => {
             const analysis = new StockAnalysis();
             analysis.stockSymbol = score.symbol;

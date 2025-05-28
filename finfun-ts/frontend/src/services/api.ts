@@ -85,6 +85,20 @@ interface Config {
     updatedAt: string;
 }
 
+export interface AnalysisResponse {
+    analyses: StockAnalysis[];
+    analyzedAt: string | null;
+    isFresh: boolean;
+    needsAnalysis?: boolean;
+    message?: string;
+}
+
+function getToken(): string {
+    const token = localStorage.getItem('authToken');
+    if (!token) throw new Error('No authentication token found');
+    return token;
+}
+
 export const api = {
     // Auth endpoints
     login: async (email: string, password: string): Promise<AuthResponse> => {
@@ -140,14 +154,25 @@ export const api = {
     },
 
     // Analysis endpoints
-    getAnalysis: async (): Promise<StockAnalysis[]> => {
-        const response = await apiClient.get('/analysis');
-        return response.data;
+    async getAnalysis(): Promise<AnalysisResponse> {
+        const response = await fetch(`${API_BASE_URL}/analysis`, {
+            headers: {
+                'Authorization': `Bearer ${getToken()}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to fetch analysis');
+        return response.json();
     },
 
-    performAnalysis: async (): Promise<{ analyses: StockAnalysis[]; analyzedAt: string }> => {
-        const response = await apiClient.post('/analysis/analyze');
-        return response.data;
+    async performAnalysis(): Promise<AnalysisResponse> {
+        const response = await fetch(`${API_BASE_URL}/analysis/analyze`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getToken()}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to perform analysis');
+        return response.json();
     },
 
     // Sector Analysis endpoints

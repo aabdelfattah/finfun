@@ -1,54 +1,55 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
-import { Portfolio } from "./Portfolio";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity()
 export class StockAnalysis {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
+    @Column({ unique: true })
     stockSymbol: string;
 
-    @Column({ nullable: true })
+    @Column('simple-json', { default: '[]' })
+    portfolioIds: number[];
+
+    @Column()
     sector: string;
 
-    @Column("float")
+    @Column('decimal', { precision: 5, scale: 2 })
     healthScore: number;
 
-    @Column("float")
+    @Column('decimal', { precision: 5, scale: 2 })
     valueScore: number;
 
-    @Column("float")
+    @Column('decimal', { precision: 5, scale: 2 })
     totalScore: number;
 
     @Column()
     recommendation: string;
 
-    @Column("float", { nullable: true })
-    pe: number | null;
+    @Column('decimal', { precision: 10, scale: 2, nullable: true })
+    pe: number;
 
-    @Column("float", { nullable: true })
-    dividendYield: number | null;
+    @Column('decimal', { precision: 5, scale: 4, nullable: true })
+    dividendYield: number;
 
-    @Column("float", { nullable: true })
-    profitMargins: number | null;
+    @Column('decimal', { precision: 5, scale: 4, nullable: true })
+    profitMargins: number;
 
-    @Column("float", { nullable: true })
-    discountAllTimeHigh: number | null;
+    @Column('decimal', { precision: 10, scale: 2, nullable: true })
+    discountAllTimeHigh: number;
 
-    @Column("float", { nullable: true })
-    debtToEquity: number | null;
+    @Column('decimal', { precision: 10, scale: 2, nullable: true })
+    debtToEquity: number;
 
-    @Column("float", { nullable: true })
-    price: number | null;
+    @Column('decimal', { precision: 10, scale: 2, nullable: true })
+    price: number;
 
     @Column()
-    portfolioId: number;
-
-    @ManyToOne(() => Portfolio)
-    @JoinColumn({ name: 'portfolioId' })
-    portfolio: Portfolio;
+    analyzedAt: Date;
 
     @CreateDateColumn()
-    analyzedAt: Date;
+    createdAt: Date;
+
+    @UpdateDateColumn()
+    updatedAt: Date;
 } 

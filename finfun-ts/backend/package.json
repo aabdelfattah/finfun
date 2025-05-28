@@ -8,7 +8,11 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "test": "jest",
-    "update-sector-reference": "ts-node src/scripts/update-sector-reference.ts"
+    "update-sector-reference": "ts-node src/scripts/update-sector-reference.ts",
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:run": "npm run typeorm migration:run -- -d src/data-source.ts",
+    "migration:revert": "npm run typeorm migration:revert -- -d src/data-source.ts",
+    "migration:generate": "npm run typeorm migration:generate -- -d src/data-source.ts"
   },
   "keywords": [],
   "author": "",

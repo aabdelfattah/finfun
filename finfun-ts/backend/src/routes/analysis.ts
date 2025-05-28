@@ -56,6 +56,13 @@ function getRecommendation(totalScore: number): string {
     return 'Strong Sell';
 }
 
+// Helper function to check if analysis is fresh (less than 24 hours old)
+function isAnalysisFresh(analyzedAt: Date): boolean {
+    const now = new Date();
+    const hoursDiff = (now.getTime() - analyzedAt.getTime()) / (1000 * 60 * 60);
+    return hoursDiff < 24;
+}
+
 // Get all analyses
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
@@ -63,7 +70,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
             return res.status(401).json({ error: 'User not authenticated' });
         }
 
-        const analysisRepository = AppDataSource.getRepository(StockAnalysis);
+        const stockAnalysisRepository = AppDataSource.getRepository(StockAnalysis);
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
 
         // Get current user's portfolio
@@ -82,17 +89,36 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
             return res.json([]);
         }
 
-        // Get analyses only for current user's portfolio
-        const analyses = await analysisRepository.find({
-            where: {
-                portfolioId: portfolio.id
-            },
-            order: {
-                analyzedAt: 'DESC'
-            }
-        });
+        // Get analyses for current user's portfolio using JSON contains
+        const analyses = await stockAnalysisRepository
+            .createQueryBuilder('sa')
+            .where('sa.stockSymbol IN (:...symbols)', { symbols: currentSymbols })
+            .getMany();
 
-        res.json(analyses);
+        // Filter analyses that contain this portfolio ID
+        const portfolioAnalyses = analyses.filter(analysis => 
+            analysis.portfolioIds && analysis.portfolioIds.includes(portfolio.id)
+        );
+
+        // Check if we have any analyses and if they're fresh
+        if (portfolioAnalyses.length > 0) {
+            const isFresh = isAnalysisFresh(portfolioAnalyses[0].analyzedAt);
+            if (isFresh) {
+                return res.json({
+                    analyses: portfolioAnalyses,
+                    analyzedAt: portfolioAnalyses[0].analyzedAt,
+                    isFresh: true
+                });
+            }
+        }
+
+        // If no analyses or not fresh, trigger new analysis
+        res.json({
+            analyses: [],
+            analyzedAt: null,
+            isFresh: false,
+            needsAnalysis: true
+        });
     } catch (error) {
         console.error('Error fetching analyses:', error);
         res.status(500).json({ error: 'Failed to fetch analyses' });
@@ -138,7 +164,7 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
         }
 
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
-        const analysisRepository = AppDataSource.getRepository(StockAnalysis);
+        const stockAnalysisRepository = AppDataSource.getRepository(StockAnalysis);
 
         // Get current user's portfolio
         const portfolio = await portfolioRepository.findOne({
@@ -156,10 +182,25 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
             return res.status(400).json({ error: 'No portfolio data found to analyze' });
         }
 
-        // Delete only previous analyses for this user's portfolio
-        await analysisRepository.delete({
-            portfolioId: portfolio.id
-        });
+        // Check if we have fresh analyses for this portfolio
+        const existingAnalyses = await stockAnalysisRepository
+            .createQueryBuilder('sa')
+            .where('sa.stockSymbol IN (:...symbols)', { symbols: currentSymbols })
+            .getMany();
+
+        // Filter analyses that contain this portfolio ID
+        const portfolioAnalyses = existingAnalyses.filter(analysis => 
+            analysis.portfolioIds && analysis.portfolioIds.includes(portfolio.id)
+        );
+
+        if (portfolioAnalyses.length > 0 && isAnalysisFresh(portfolioAnalyses[0].analyzedAt)) {
+            return res.json({
+                message: 'Using cached analysis',
+                analyses: portfolioAnalyses,
+                analyzedAt: portfolioAnalyses[0].analyzedAt,
+                isFresh: true
+            });
+        }
 
         // Collect stock data for current user's portfolio stocks
         const stockData: StockData[] = [];
@@ -193,16 +234,32 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
         // Calculate normalized scores
         const normalizedScores = calculateNormalizedScores(stockData, stockData);
 
-        // Save analyses for current user's portfolio stocks
-        const analyses = normalizedScores.map(score => {
-            const analysis = new StockAnalysis();
-            analysis.stockSymbol = score.symbol;
+        // Save analyses
+        const analyses = await Promise.all(normalizedScores.map(async score => {
+            // Check if analysis already exists for this stock
+            let analysis = await stockAnalysisRepository.findOne({
+                where: { stockSymbol: score.symbol }
+            });
+
+            if (!analysis) {
+                // Create new analysis if it doesn't exist
+                analysis = new StockAnalysis();
+                analysis.stockSymbol = score.symbol;
+                analysis.portfolioIds = [portfolio.id];
+            } else {
+                // Add portfolio ID to existing analysis if not already present
+                if (!analysis.portfolioIds.includes(portfolio.id)) {
+                    analysis.portfolioIds.push(portfolio.id);
+                }
+            }
+
+            // Update analysis data
             analysis.sector = stockData.find(s => s.symbol === score.symbol)?.sector || 'Unknown';
             analysis.healthScore = score.healthScore;
             analysis.valueScore = score.valueScore;
             analysis.totalScore = score.totalScore;
             analysis.recommendation = getRecommendation(score.totalScore);
-            analysis.portfolioId = portfolio.id; // Associate with current portfolio
+            analysis.analyzedAt = new Date();
             
             // Save original metrics
             const stockInfo = stockData.find(s => s.symbol === score.symbol)!;
@@ -213,15 +270,14 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
             analysis.debtToEquity = stockInfo.debtToEquity || 0;
             analysis.price = stockInfo.price || 0;
             
-            return analysis;
-        });
+            return await stockAnalysisRepository.save(analysis);
+        }));
 
-        const savedAnalyses = await analysisRepository.save(analyses);
-        const analyzedAt = savedAnalyses[0]?.analyzedAt || new Date();
+        const analyzedAt = analyses[0]?.analyzedAt || new Date();
 
         res.json({ 
             message: 'Analysis completed successfully', 
-            analyses: savedAnalyses,
+            analyses,
             analyzedAt: analyzedAt
         });
     } catch (error) {

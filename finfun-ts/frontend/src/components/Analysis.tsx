@@ -22,7 +22,10 @@ import { api } from '../services/api';
 import { StockAnalysis } from '../types';
 interface AnalysisResponse {
     analyses: StockAnalysis[];
-    analyzedAt: string;
+    analyzedAt: string | null;
+    isFresh: boolean;
+    needsAnalysis?: boolean;
+    message?: string;
 }
 
 interface SectorMetrics {
@@ -360,6 +363,7 @@ export const Analysis: React.FC = () => {
     const [analyzedAt, setAnalyzedAt] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isFresh, setIsFresh] = useState(false);
 
     useEffect(() => {
         loadAnalysis();
@@ -369,10 +373,15 @@ export const Analysis: React.FC = () => {
     const loadAnalysis = async () => {
         try {
             setError(null);
-            const data = await api.getAnalysis();
-            setAnalysis(data);
-            if (data.length > 0 && data[0].analyzedAt) {
-                setAnalyzedAt(data[0].analyzedAt);
+            const response = await api.getAnalysis();
+            
+            if (response.needsAnalysis) {
+                // Automatically trigger analysis if needed
+                await handleAnalyze();
+            } else {
+                setAnalysis(response.analyses);
+                setAnalyzedAt(response.analyzedAt);
+                setIsFresh(response.isFresh);
             }
         } catch (error) {
             console.error('Failed to load analysis:', error);
@@ -396,6 +405,7 @@ export const Analysis: React.FC = () => {
             const response = await api.performAnalysis();
             setAnalysis(response.analyses);
             setAnalyzedAt(response.analyzedAt);
+            setIsFresh(response.isFresh);
         } catch (error) {
             console.error('Failed to perform analysis:', error);
             setError('Failed to perform analysis');
@@ -445,8 +455,11 @@ export const Analysis: React.FC = () => {
                 )}
 
                 {!loading && !error && analysis.length > 0 && analyzedAt && (
-                    <Alert severity="success">
-                        Analysis completed successfully. Last analyzed: {formatDate(analyzedAt)}
+                    <Alert severity={isFresh ? "success" : "warning"}>
+                        {isFresh 
+                            ? `Analysis completed successfully. Last analyzed: ${formatDate(analyzedAt)}`
+                            : `Analysis data is more than 24 hours old. Last analyzed: ${formatDate(analyzedAt)}. Click "Run New Analysis" to refresh.`
+                        }
                     </Alert>
                 )}
 

@@ -2,8 +2,10 @@ import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../server';
 import { Portfolio, PortfolioStock } from '../entities/Portfolio';
 import { StockAnalysis } from '../entities/StockAnalysis';
+import { AIStockAnalysis } from '../entities/AIStockAnalysis';
 import { SectorMetrics } from '../entities/SectorMetrics';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { getFinRobotService } from '../services/finrobotService';
 import yahooFinance from 'yahoo-finance2';
 import { StockData, calculateNormalizedScores } from '../utils/analysisUtils';
 import * as fs from 'fs';
@@ -283,6 +285,301 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
     } catch (error) {
         console.error('Error analyzing portfolio:', error);
         res.status(500).json({ error: 'Failed to analyze portfolio' });
+    }
+});
+
+// AI Analysis Endpoints
+
+// Get AI analyses for current user's portfolio
+router.get('/ai', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const portfolioRepository = AppDataSource.getRepository(Portfolio);
+        
+        // Get current user's portfolio
+        const portfolio = await portfolioRepository.findOne({
+            where: { userId: req.user.id },
+            relations: ['stocks']
+        });
+
+        if (!portfolio) {
+            return res.json({ aiAnalyses: [], message: 'No portfolio found' });
+        }
+
+        // Get AI analyses for this portfolio
+        const aiAnalyses = await getFinRobotService().getPortfolioAIAnalyses(portfolio.id);
+        
+        // Check if we have fresh analyses
+        const freshAnalyses = aiAnalyses.filter(analysis => analysis.isFresh());
+        const needsRefresh = freshAnalyses.length < portfolio.stocks.length;
+
+        res.json({
+            aiAnalyses: freshAnalyses,
+            needsRefresh,
+            totalStocks: portfolio.stocks.length,
+            analyzedStocks: freshAnalyses.length
+        });
+
+    } catch (error) {
+        console.error('Error fetching AI analyses:', error);
+        res.status(500).json({ error: 'Failed to fetch AI analyses' });
+    }
+});
+
+// Trigger AI analysis for current user's portfolio
+router.post('/ai/analyze', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { analysisType = 'standard' } = req.body;
+        
+        // Validate analysis type
+        if (!['quick', 'standard', 'deep'].includes(analysisType)) {
+            return res.status(400).json({ 
+                error: 'Invalid analysis type. Must be: quick, standard, or deep' 
+            });
+        }
+
+        const portfolioRepository = AppDataSource.getRepository(Portfolio);
+        
+        // Get current user's portfolio
+        const portfolio = await portfolioRepository.findOne({
+            where: { userId: req.user.id },
+            relations: ['stocks']
+        });
+
+        if (!portfolio) {
+            return res.status(400).json({ error: 'No portfolio found. Please create a portfolio first.' });
+        }
+
+        if (portfolio.stocks.length === 0) {
+            return res.status(400).json({ error: 'No stocks found in portfolio.' });
+        }
+
+        // Check if FinRobot API is available
+        const isAPIHealthy = await getFinRobotService().checkAPIHealth();
+        if (!isAPIHealthy) {
+            return res.status(503).json({ 
+                error: 'FinRobot AI service is currently unavailable. Please try again later.' 
+            });
+        }
+
+        const symbols = portfolio.stocks.map(stock => stock.stockSymbol);
+        
+        console.log(`🚀 Starting AI analysis for user ${req.user.email}'s portfolio: ${symbols.join(', ')}`);
+
+        // Perform AI analysis with caching
+        const aiAnalyses = await getFinRobotService().analyzePortfolioStocks(
+            symbols, 
+            portfolio.id, 
+            analysisType as 'quick' | 'standard' | 'deep'
+        );
+
+        const successfulAnalyses = aiAnalyses.filter(a => a.success);
+        const failedAnalyses = aiAnalyses.filter(a => !a.success);
+
+        res.json({
+            message: 'AI analysis completed',
+            aiAnalyses: successfulAnalyses,
+            summary: {
+                total: aiAnalyses.length,
+                successful: successfulAnalyses.length,
+                failed: failedAnalyses.length,
+                analysisType
+            },
+            errors: failedAnalyses.map(a => ({ 
+                symbol: a.stockSymbol, 
+                error: a.errorMessage 
+            }))
+        });
+
+    } catch (error) {
+        console.error('Error performing AI analysis:', error);
+        res.status(500).json({ error: 'Failed to perform AI analysis' });
+    }
+});
+
+// Get AI analysis for a specific stock
+router.get('/ai/:symbol', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { symbol } = req.params;
+        const { analysisType = 'standard' } = req.query;
+
+        const portfolioRepository = AppDataSource.getRepository(Portfolio);
+        const aiAnalysisRepository = AppDataSource.getRepository(AIStockAnalysis);
+        
+        // Get current user's portfolio to verify they have this stock
+        const portfolio = await portfolioRepository.findOne({
+            where: { userId: req.user.id },
+            relations: ['stocks']
+        });
+
+        if (!portfolio) {
+            return res.status(400).json({ error: 'No portfolio found' });
+        }
+
+        const hasStock = portfolio.stocks.some(stock => 
+            stock.stockSymbol.toUpperCase() === symbol.toUpperCase()
+        );
+
+        if (!hasStock) {
+            return res.status(400).json({ 
+                error: 'Stock not found in your portfolio' 
+            });
+        }
+
+        // Get the most recent AI analysis for this stock
+        const aiAnalysis = await aiAnalysisRepository.findOne({
+            where: { 
+                stockSymbol: symbol.toUpperCase(), 
+                analysisType: analysisType as string
+            },
+            order: { analyzedAt: 'DESC' }
+        });
+
+        if (!aiAnalysis) {
+            return res.json({ 
+                message: 'No AI analysis found. Please run portfolio analysis first.',
+                hasAnalysis: false
+            });
+        }
+
+        res.json({
+            aiAnalysis,
+            isFresh: aiAnalysis.isFresh(),
+            hasAnalysis: true
+        });
+
+    } catch (error) {
+        console.error('Error fetching AI analysis for stock:', error);
+        res.status(500).json({ error: 'Failed to fetch AI analysis' });
+    }
+});
+
+// Combined endpoint: Get both traditional and AI analyses
+router.get('/enhanced', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const portfolioRepository = AppDataSource.getRepository(Portfolio);
+        const stockAnalysisRepository = AppDataSource.getRepository(StockAnalysis);
+        
+        // Get current user's portfolio
+        const portfolio = await portfolioRepository.findOne({
+            where: { userId: req.user.id },
+            relations: ['stocks']
+        });
+
+        if (!portfolio) {
+            return res.json({ 
+                traditional: [], 
+                ai: [], 
+                message: 'No portfolio found' 
+            });
+        }
+
+        const currentSymbols = portfolio.stocks.map(s => s.stockSymbol);
+
+        if (currentSymbols.length === 0) {
+            return res.json({ 
+                traditional: [], 
+                ai: [], 
+                message: 'No stocks in portfolio' 
+            });
+        }
+
+        // Get traditional analyses
+        const traditionalAnalyses = await stockAnalysisRepository
+            .createQueryBuilder('sa')
+            .where('sa.stockSymbol IN (:...symbols)', { symbols: currentSymbols })
+            .getMany();
+
+        const portfolioTraditionalAnalyses = traditionalAnalyses.filter(analysis => 
+            analysis.portfolioIds && analysis.portfolioIds.includes(portfolio.id)
+        );
+
+        // Get AI analyses
+        const aiAnalyses = await getFinRobotService().getPortfolioAIAnalyses(portfolio.id);
+        const freshAiAnalyses = aiAnalyses.filter(analysis => analysis.isFresh());
+
+        // Combine data by stock symbol
+        const enhancedAnalyses = currentSymbols.map(symbol => {
+            const traditional = portfolioTraditionalAnalyses.find(a => a.stockSymbol === symbol);
+            const ai = freshAiAnalyses.find(a => a.stockSymbol === symbol);
+            
+            return {
+                symbol,
+                traditional: traditional || null,
+                ai: ai || null,
+                hasTraditional: !!traditional,
+                hasAI: !!ai,
+                needsAIAnalysis: !ai || !ai.isFresh()
+            };
+        });
+
+        res.json({
+            enhancedAnalyses,
+            summary: {
+                totalStocks: currentSymbols.length,
+                withTraditional: enhancedAnalyses.filter(e => e.hasTraditional).length,
+                withAI: enhancedAnalyses.filter(e => e.hasAI).length,
+                needingAI: enhancedAnalyses.filter(e => e.needsAIAnalysis).length
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching enhanced analyses:', error);
+        res.status(500).json({ error: 'Failed to fetch enhanced analyses' });
+    }
+});
+
+// Individual AI stock analysis endpoint
+router.get('/ai/stock/:symbol', authenticateToken, async (req, res) => {
+    try {
+        const symbol = req.params.symbol.toUpperCase();
+        const analysisType = (req.query.analysisType as string) || 'quick';
+        
+        // Validate analysis type
+        if (!['quick', 'standard', 'deep'].includes(analysisType)) {
+            return res.status(400).json({ 
+                error: 'Invalid analysis type. Must be quick, standard, or deep' 
+            });
+        }
+
+        console.log(`🔍 Individual AI analysis request for ${symbol} (${analysisType})`);
+
+        const finRobotService = getFinRobotService();
+        
+        // Use portfolio ID 0 for individual stock analysis
+        const result = await finRobotService.analyzeStock(symbol, 0, analysisType as any);
+        
+        res.json({
+            symbol: result.stockSymbol,
+            analysisType: result.analysisType,
+            analysisText: result.analysisText,
+            success: result.success,
+            errorMessage: result.errorMessage,
+            analyzedAt: result.analyzedAt,
+            cached: result.isFresh()
+        });
+
+    } catch (error) {
+        console.error('Error in individual AI stock analysis:', error);
+        res.status(500).json({ 
+            error: 'Failed to analyze stock',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 });
 

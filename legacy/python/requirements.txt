@@ -1,8 +1,0 @@
-flask>=2.3.0
-sqlalchemy>=2.0.0
-pandas>=2.0.0
-apscheduler>=3.10.0
-werkzeug>=2.3.0
-requests>=2.31.0
-yfinance>=0.2.61
-numpy>=1.24.0 

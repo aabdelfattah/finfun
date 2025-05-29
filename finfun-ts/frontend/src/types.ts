@@ -67,4 +67,59 @@ export interface SectorMetrics {
         recommendation: string;
         isInPortfolio: boolean;
     }[];
+}
+
+// AI Analysis Types
+export interface AIStockAnalysis {
+    id: number;
+    stockSymbol: string;
+    analysisType: 'quick' | 'standard' | 'deep';
+    analysisText: string;
+    portfolioIds: number[];
+    success: boolean;
+    errorMessage?: string;
+    analyzedAt: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface AIAnalysisResponse {
+    aiAnalyses: AIStockAnalysis[];
+    needsRefresh: boolean;
+    totalStocks: number;
+    analyzedStocks: number;
+}
+
+export interface AIAnalysisResult {
+    message: string;
+    aiAnalyses: AIStockAnalysis[];
+    summary: {
+        total: number;
+        successful: number;
+        failed: number;
+        analysisType: string;
+    };
+    errors: {
+        symbol: string;
+        error: string;
+    }[];
+}
+
+export interface EnhancedStockAnalysis {
+    symbol: string;
+    traditional: StockAnalysis | null;
+    ai: AIStockAnalysis | null;
+    hasTraditional: boolean;
+    hasAI: boolean;
+    needsAIAnalysis: boolean;
+}
+
+export interface EnhancedAnalysisResponse {
+    enhancedAnalyses: EnhancedStockAnalysis[];
+    summary: {
+        totalStocks: number;
+        withTraditional: number;
+        withAI: number;
+        needingAI: number;
+    };
 } 

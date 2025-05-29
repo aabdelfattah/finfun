@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Portfolio, StockAnalysis } from '../types';
+import { Portfolio, StockAnalysis, AIAnalysisResponse, AIAnalysisResult, EnhancedAnalysisResponse, AIStockAnalysis } from '../types';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -199,4 +199,53 @@ export const api = {
             return false;
         }
     },
+
+    // AI Analysis endpoints
+    getAIAnalysis: async (): Promise<AIAnalysisResponse> => {
+        const response = await apiClient.get('/analysis/ai');
+        return response.data;
+    },
+
+    performAIAnalysis: async (analysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<AIAnalysisResult> => {
+        const response = await apiClient.post('/analysis/ai/analyze', { analysisType });
+        return response.data;
+    },
+
+    getStockAIAnalysis: async (symbol: string, analysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<{
+        aiAnalysis: AIStockAnalysis;
+        isFresh: boolean;
+        hasAnalysis: boolean;
+    }> => {
+        const response = await apiClient.get(`/analysis/ai/${symbol}`, {
+            params: { analysisType }
+        });
+        return response.data;
+    },
+
+    getEnhancedAnalysis: async (): Promise<EnhancedAnalysisResponse> => {
+        const response = await apiClient.get('/analysis/enhanced');
+        return response.data;
+    },
+
+    // Combined analysis method that gets both traditional and AI analysis
+    performCompleteAnalysis: async (includeAI: boolean = true, aiAnalysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<{
+        traditional: AnalysisResponse;
+        ai?: AIAnalysisResult;
+    }> => {
+        // First perform traditional analysis
+        const traditional = await api.performAnalysis();
+        
+        if (!includeAI) {
+            return { traditional };
+        }
+
+        // Then perform AI analysis
+        try {
+            const ai = await api.performAIAnalysis(aiAnalysisType);
+            return { traditional, ai };
+        } catch (error) {
+            console.warn('AI analysis failed, returning traditional analysis only:', error);
+            return { traditional };
+        }
+    }
 }; 

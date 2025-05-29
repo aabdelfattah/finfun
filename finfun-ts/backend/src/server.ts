@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 import { Portfolio, PortfolioStock } from './entities/Portfolio';
 import { StockAnalysis } from './entities/StockAnalysis';
+import { AIStockAnalysis } from './entities/AIStockAnalysis';
 import { SectorMetrics } from './entities/SectorMetrics';
 import { User } from './entities/User';
 import { Config } from './entities/Config';
@@ -29,7 +30,7 @@ export const AppDataSource = new DataSource({
     database: "finfun.db",
     synchronize: true,
     logging: true,
-    entities: [Portfolio, PortfolioStock, StockAnalysis, SectorMetrics, User, Config],
+    entities: [Portfolio, PortfolioStock, StockAnalysis, AIStockAnalysis, SectorMetrics, User, Config],
     migrations: [],
     subscribers: [],
 });

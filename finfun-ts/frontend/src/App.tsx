@@ -34,6 +34,7 @@ import {
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Portfolio } from './components/Portfolio';
 import { Analysis } from './components/Analysis';
+import { EnhancedAnalysis } from './components/EnhancedAnalysis';
 import { SectorAnalysis } from './components/SectorAnalysis';
 import { Login } from './components/Login';
 import { Config } from './components/Config';
@@ -357,6 +358,11 @@ function AppContent() {
                                     </ProtectedRoute>
                                 } />
                                 <Route path="/analysis" element={
+                                    <ProtectedRoute>
+                                        <EnhancedAnalysis />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="/analysis/traditional" element={
                                     <ProtectedRoute>
                                         <Analysis />
                                     </ProtectedRoute>

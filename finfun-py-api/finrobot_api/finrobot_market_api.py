@@ -67,6 +67,7 @@ class MarketAnalystService:
                     "work_dir": "market_analysis",
                     "use_docker": False,
                 },
+                system_message="You are a financial market analyst. Provide detailed analysis with all your thought process and tool usage visible in the output.",
             )
             print("✅ FinRobot Market Analyst initialized successfully")
             
@@ -116,18 +117,25 @@ class MarketAnalystService:
             
             # Redirect stdout and stderr to capture the conversation
             with redirect_stdout(output_buffer), redirect_stderr(error_buffer):
-                self.assistant.chat(prompt)
+                # Enable verbose mode for more detailed output
+                self.assistant.verbose = True
+                # Get the chat history
+                chat_history = self.assistant.chat(prompt)
             
             # Get the captured output
             raw_analysis = output_buffer.getvalue()
             error_output = error_buffer.getvalue()
             
-            # Extract clean analysis from the raw output
-            clean_analysis = self._extract_clean_analysis(raw_analysis)
+            # Include both the raw analysis, chat history, and any error output
+            full_output = f"Raw Analysis:\n{raw_analysis}\n"
+            if chat_history:
+                full_output += f"\nChat History:\n{chat_history}\n"
+            if error_output:
+                full_output += f"\nError Output:\n{error_output}"
             
             return {
                 "success": True,
-                "analysis_text": clean_analysis,
+                "analysis_text": full_output,
                 "error_message": error_output if error_output else None
             }
             
@@ -137,77 +145,6 @@ class MarketAnalystService:
                 "analysis_text": "",
                 "error_message": str(e)
             }
-    
-    def _extract_clean_analysis(self, raw_text: str) -> str:
-        """Extract the clean analysis from the raw conversation log"""
-        try:
-            # Look for the pattern where the actual analysis starts
-            # It usually comes after all the tool responses and before TERMINATE
-            
-            # First, find all the tool response sections and skip them
-            lines = raw_text.split('\n')
-            
-            # Look for the start of the actual analysis (after all tool responses)
-            analysis_start = -1
-            for i, line in enumerate(lines):
-                # Look for lines that indicate the start of actual analysis
-                if (line.strip().startswith("Here") and 
-                    any(word in line.lower() for word in ["analysis", "summary", "prediction"]) and
-                    "tool" not in line.lower()):
-                    analysis_start = i
-                    break
-                # Alternative: look for structured analysis sections
-                elif (line.strip() and 
-                      any(phrase in line for phrase in ["Company Overview:", "Recent Financials:", "Prediction for"])):
-                    analysis_start = i
-                    break
-            
-            if analysis_start != -1:
-                # Find where the analysis ends
-                analysis_end = len(lines)
-                for i in range(analysis_start, len(lines)):
-                    if "TERMINATE" in lines[i]:
-                        analysis_end = i
-                        break
-                
-                # Extract the analysis section
-                analysis_lines = lines[analysis_start:analysis_end]
-                
-                # Clean up the lines
-                clean_lines = []
-                for line in analysis_lines:
-                    line = line.strip()
-                    if (line and 
-                        not line.startswith("*****") and
-                        not line.startswith("---") and
-                        line != "Market_Analyst (to User_Proxy):"):
-                        clean_lines.append(line)
-                
-                clean_analysis = '\n'.join(clean_lines)
-                
-                # If we got substantial content, return it
-                if len(clean_analysis) > 100:
-                    return clean_analysis
-            
-            # Fallback: Look for any substantial analysis text
-            # Find the last substantial paragraph before TERMINATE
-            if "TERMINATE" in raw_text:
-                before_terminate = raw_text.split("TERMINATE")[0]
-                paragraphs = before_terminate.split('\n\n')
-                
-                # Get the last few substantial paragraphs
-                substantial_paragraphs = [p.strip() for p in paragraphs[-5:] 
-                                        if len(p.strip()) > 50 and 
-                                        "tool" not in p.lower() and
-                                        "*****" not in p]
-                
-                if substantial_paragraphs:
-                    return '\n\n'.join(substantial_paragraphs[-3:])  # Last 3 substantial paragraphs
-            
-            return "Analysis completed successfully. Please check the full response for details."
-                
-        except Exception as e:
-            return f"Analysis completed but text extraction failed: {str(e)}"
 
 
 # Initialize the service

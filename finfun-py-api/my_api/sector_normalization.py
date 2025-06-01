@@ -2,6 +2,7 @@ import requests
 import re
 from typing import List, Dict, Optional
 from dataclasses import dataclass
+from pathlib import Path
 from finrobot.data_source.yfinance_utils import YFinanceUtils
 
 @dataclass
@@ -46,6 +47,93 @@ async def fetch_sp500_tickers_and_sectors() -> List[Dict[str, str]]:
                 })
     
     return stocks
+
+async def fetch_sp400_tickers_and_sectors() -> List[Dict[str, str]]:
+    """
+    Fetch S&P 400 tickers and sectors from Wikipedia.
+    Returns a list of dictionaries containing symbol and sector information.
+    """
+    url = 'https://en.wikipedia.org/wiki/List_of_S%26P_400_companies'
+    response = requests.get(url)
+    text = response.text
+    
+    # Find the table containing S&P 400 data
+    table_match = re.search(r'<table[^>]*>[\s\S]*?<\/table>', text)
+    if not table_match:
+        raise Exception('Could not find S&P 400 table')
+    
+    table = table_match.group(0)
+    rows = re.findall(r'<tr>[\s\S]*?<\/tr>', table)
+    stocks = []
+    
+    # Skip header row
+    for row in rows[1:]:
+        cells = re.findall(r'<td[^>]*>[\s\S]*?<\/td>', row)
+        if len(cells) >= 4:
+            symbol_match = re.search(r'>([^<]+)<', cells[0])
+            sector_match = re.search(r'>([^<]+)<', cells[3])
+            if symbol_match and sector_match:
+                stocks.append({
+                    'symbol': symbol_match.group(1),
+                    'sector': sector_match.group(1)
+                })
+    
+    return stocks
+
+async def fetch_sp600_tickers_and_sectors() -> List[Dict[str, str]]:
+    """
+    Fetch S&P 600 tickers and sectors from Wikipedia.
+    Returns a list of dictionaries containing symbol and sector information.
+    """
+    url = 'https://en.wikipedia.org/wiki/List_of_S%26P_600_companies'
+    response = requests.get(url)
+    text = response.text
+    
+    # Find the table containing S&P 600 data
+    table_match = re.search(r'<table[^>]*>[\s\S]*?<\/table>', text)
+    if not table_match:
+        raise Exception('Could not find S&P 600 table')
+    
+    table = table_match.group(0)
+    rows = re.findall(r'<tr>[\s\S]*?<\/tr>', table)
+    stocks = []
+    
+    # Skip header row
+    for row in rows[1:]:
+        cells = re.findall(r'<td[^>]*>[\s\S]*?<\/td>', row)
+        if len(cells) >= 4:
+            symbol_match = re.search(r'>([^<]+)<', cells[0])
+            sector_match = re.search(r'>([^<]+)<', cells[3])
+            if symbol_match and sector_match:
+                stocks.append({
+                    'symbol': symbol_match.group(1),
+                    'sector': sector_match.group(1)
+                })
+    
+    return stocks
+
+async def fetch_sp1500_tickers_and_sectors() -> List[Dict[str, str]]:
+    """
+    Fetch all S&P 1500 tickers and sectors (S&P 500 + S&P 400 + S&P 600).
+    Returns a list of dictionaries containing symbol and sector information.
+    """
+    print('Fetching S&P 500 tickers and sectors...')
+    sp500_data = await fetch_sp500_tickers_and_sectors()
+    print(f"Fetched {len(sp500_data)} S&P 500 tickers.")
+    
+    print('Fetching S&P 400 tickers and sectors...')
+    sp400_data = await fetch_sp400_tickers_and_sectors()
+    print(f"Fetched {len(sp400_data)} S&P 400 tickers.")
+    
+    print('Fetching S&P 600 tickers and sectors...')
+    sp600_data = await fetch_sp600_tickers_and_sectors()
+    print(f"Fetched {len(sp600_data)} S&P 600 tickers.")
+    
+    # Combine all data
+    all_stocks = sp500_data + sp400_data + sp600_data
+    print(f"Total S&P 1500 tickers: {len(all_stocks)}")
+    
+    return all_stocks
 
 async def fetch_stock_data(symbols: List[str]) -> List[StockData]:
     """
@@ -113,16 +201,50 @@ def calculate_stats(stocks: List[StockData], metric: str) -> Dict[str, float]:
     
     return {'mean': mean, 'stdev': stdev}
 
-async def main():
-    # 1. Fetch S&P 500 tickers and sectors
-    print('Fetching S&P 500 tickers and sectors from Wikipedia...')
-    sp500_data = await fetch_sp500_tickers_and_sectors()
-    sp500_tickers = [item['symbol'] for item in sp500_data]
-    print(f"Fetched {len(sp500_tickers)} S&P 500 tickers.")
+async def fetch_nasdaq_tickers() -> List[str]:
+    """
+    Load and parse the NASDAQ-listed securities file.
+    Returns a list of active stock symbols (excluding ETFs).
+    """
+    tickers = []
+    file_path = Path(__file__).parent.parent / "nasdaqlisted.txt"
+    
+    try:
+        with open(file_path, 'r') as file:
+            # Skip header line
+            next(file)
+            for line in file:
+                parts = line.strip().split('|')
+                if len(parts) >= 7:  # Ensure we have all required fields
+                    # Only include active stocks (not ETFs)
+                    if parts[6] == 'N' and parts[4] == 'N':  # Not ETF and active status
+                        tickers.append(parts[0])
+    except Exception as e:
+        raise Exception(f"Error loading NASDAQ tickers: {str(e)}")
+    
+    return tickers
+
+async def main(use_nasdaq: bool = False):
+    """
+    Main function to calculate sector normalization metrics.
+    Args:
+        use_nasdaq: If True, use NASDAQ tickers instead of S&P 1500
+    """
+    if use_nasdaq:
+        # 1. Fetch NASDAQ tickers
+        print('Loading NASDAQ tickers...')
+        tickers = await fetch_nasdaq_tickers()
+        print(f"Loaded {len(tickers)} NASDAQ tickers.")
+    else:
+        # 1. Fetch S&P 1500 tickers and sectors
+        print('Fetching S&P 1500 tickers and sectors...')
+        sp1500_data = await fetch_sp1500_tickers_and_sectors()
+        tickers = [item['symbol'] for item in sp1500_data]
+        print(f"Fetched {len(tickers)} S&P 1500 tickers.")
     
     # 2. Fetch stock data
-    print('Fetching S&P 500 stock data...')
-    all_stocks = await fetch_stock_data(sp500_tickers)
+    print('Fetching stock data...')
+    all_stocks = await fetch_stock_data(tickers)
     print(f"Fetched data for {len(all_stocks)} stocks.")
     
     # 3. Group by sector

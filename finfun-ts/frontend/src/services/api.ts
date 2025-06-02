@@ -181,6 +181,18 @@ export const api = {
         return response.data;
     },
 
+    getSectorNormalization: async (): Promise<SectorData[]> => {
+        const response = await fetch('http://localhost:8001/api/sectors/normalization', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        if (!response.ok) {
+            throw new Error('Failed to get sector normalization data');
+        }
+        return response.json();
+    },
+
     runSectorAnalysis: async (): Promise<{ message: string }> => {
         const response = await apiClient.post('/sector-analysis/run');
         return response.data;
@@ -194,8 +206,9 @@ export const api = {
     checkSectorAnalysisAccess: async (): Promise<boolean> => {
         try {
             const response = await apiClient.get('/config/allow_user_sector_analysis');
-            return response.data.value === 'true';
+            return response.data.config?.value === 'true';
         } catch (error) {
+            console.error('Error checking sector analysis access:', error);
             return false;
         }
     },
@@ -247,5 +260,25 @@ export const api = {
             console.warn('AI analysis failed, returning traditional analysis only:', error);
             return { traditional };
         }
+    },
+
+    // Add new method for direct FinRobot API calls
+    getFinRobotAnalysis: async (symbol: string, analysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<{
+        symbol: string;
+        analysis_date: string;
+        analysis_type: string;
+        analysis_text: string;
+        success: boolean;
+        error_message?: string;
+    }> => {
+        const response = await fetch(`http://localhost:8000/api/analyze/${symbol}?analysis_type=${analysisType}`, {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        if (!response.ok) {
+            throw new Error('Failed to get FinRobot analysis');
+        }
+        return response.json();
     }
 }; 

@@ -69,13 +69,19 @@ async def analyze_stock(
 @app.get("/api/sectors/normalization")
 async def get_sector_normalization():
     """
-    Get sector normalization data for S&P 500 stocks.
-    Returns metrics for each sector including mean and standard deviation for various financial indicators.
+    Get sector normalization data.
     """
     try:
         result = await sector_normalization_main()
+        print("\n=== Python API Sector Normalization Results ===")
+        print("Number of sectors:", len(result))
+        for sector in result:
+            print(f"\nSector: {sector['name']}")
+            print("Metrics:", sector['metrics'])
+        print("===========================================\n")
         return result
     except Exception as e:
+        print("Error in sector normalization:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

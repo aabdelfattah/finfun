@@ -75,7 +75,7 @@ export class FinRobotService {
             try {
                 // Call FinRobot API using axios for better timeout support
                 const response = await axios.get(
-                    `http://localhost:8000/analyze/${symbol}`,
+                    `http://localhost:8000/api/analyze/${symbol}`,
                     {
                         params: { analysis_type: analysisType },
                         timeout: 120000, // 2 minutes timeout

@@ -75,22 +75,36 @@ const SectorAnalysisRoute: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        let isMounted = true;
+        
         const checkAccess = async () => {
             try {
                 if (isAdmin()) {
-                    setHasAccess(true);
+                    if (isMounted) {
+                        setHasAccess(true);
+                        setIsLoading(false);
+                    }
                     return;
                 }
                 const access = await api.checkSectorAnalysisAccess();
-                setHasAccess(access);
+                if (isMounted) {
+                    setHasAccess(access);
+                    setIsLoading(false);
+                }
             } catch (error) {
-                setHasAccess(false);
-            } finally {
-                setIsLoading(false);
+                console.error('Error checking access:', error);
+                if (isMounted) {
+                    setHasAccess(false);
+                    setIsLoading(false);
+                }
             }
         };
 
         checkAccess();
+        
+        return () => {
+            isMounted = false;
+        };
     }, [isAdmin]);
 
     if (isLoading) {

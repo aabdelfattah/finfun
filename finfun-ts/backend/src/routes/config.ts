@@ -5,8 +5,35 @@ import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth
 
 const router = express.Router();
 
-// Apply authentication and admin requirement to all config routes
+// Apply authentication to all config routes
 router.use(authenticateToken);
+
+// Special route for checking sector analysis access (available to all authenticated users)
+router.get('/allow_user_sector_analysis', async (req: AuthRequest, res) => {
+    try {
+        const configRepository = AppDataSource.getRepository(Config);
+        const config = await configRepository.findOne({ 
+            where: { key: 'allow_user_sector_analysis' } 
+        });
+        
+        if (!config) {
+            // If config doesn't exist, create it with default value
+            const newConfig = new Config();
+            newConfig.key = 'allow_user_sector_analysis';
+            newConfig.value = 'true';
+            newConfig.description = 'Allow normal users to access sector analysis page';
+            await configRepository.save(newConfig);
+            return res.json({ config: newConfig });
+        }
+        
+        res.json({ config });
+    } catch (error) {
+        console.error('Get sector analysis access error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Apply admin requirement to all other config routes
 router.use(requireAdmin);
 
 // Get all config settings

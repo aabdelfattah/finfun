@@ -1,15 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as path from 'path';
 import { AppDataSource } from '../server';
 import { SectorMetrics } from '../entities/SectorMetrics';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { UserRole } from '../entities/User';
 import { isUserSectorAnalysisAllowed } from '../utils/configUtils';
+import axios from 'axios';
 
 const router = Router();
-const execAsync = promisify(exec);
 
 interface SectorMetricsData {
     mean: number;
@@ -27,140 +24,117 @@ interface SectorData {
     };
 }
 
-// Middleware to check sector analysis access
-const checkSectorAnalysisAccess = async (req: AuthRequest, res: Response, next: any) => {
-    try {
-        // If user is admin, always allow access
-        if (req.user?.role === UserRole.ADMIN) {
-            return next();
-        }
-
-        // Check if normal users are allowed to access sector analysis
-        const isAllowed = await isUserSectorAnalysisAllowed();
-        if (!isAllowed) {
-            return res.status(403).json({ 
-                error: 'Access denied. Sector analysis is restricted to administrators.' 
-            });
-        }
-
-        next();
-    } catch (error) {
-        console.error('Error checking sector analysis access:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-};
-
 // Get sector analysis data
-router.get('/', authenticateToken, checkSectorAnalysisAccess, async (req: AuthRequest, res: Response) => {
+router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-        const sectorMetricsRepository = AppDataSource.getRepository(SectorMetrics);
-        const metrics = await sectorMetricsRepository.find();
-        
-        // Get the latest timestamp from any metric
-        const latestTimestamp = metrics.length > 0 ? metrics[0].createdAt : null;
-        
-        // Group metrics by sector
-        const sectorData: SectorData[] = metrics.reduce((acc: SectorData[], metric) => {
-            const existingSector = acc.find(s => s.name === metric.sector);
-            if (existingSector) {
-                return acc;
-            }
-            
-            acc.push({
-                name: metric.sector,
-                metrics: {
-                    dividendYield: {
-                        mean: metric.dividendYieldMean,
-                        stdev: metric.dividendYieldStdev
-                    },
-                    profitMargins: {
-                        mean: metric.profitMarginsMean,
-                        stdev: metric.profitMarginsStdev
-                    },
-                    debtToEquity: {
-                        mean: metric.debtToEquityMean,
-                        stdev: metric.debtToEquityStdev
-                    },
-                    pe: {
-                        mean: metric.peMean,
-                        stdev: metric.peStdev
-                    },
-                    discountFrom52W: {
-                        mean: metric.discountFrom52WMean,
-                        stdev: metric.discountFrom52WStdev
-                    }
+        const hasAccess = await isUserSectorAnalysisAllowed();
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        const sectorMetricsRepo = AppDataSource.getRepository(SectorMetrics);
+        const metrics = await sectorMetricsRepo.find();
+
+        const sectorData: SectorData[] = metrics.map(metric => ({
+            name: metric.sector,
+            metrics: {
+                dividendYield: {
+                    mean: metric.dividendYieldMean,
+                    stdev: metric.dividendYieldStdev
+                },
+                profitMargins: {
+                    mean: metric.profitMarginsMean,
+                    stdev: metric.profitMarginsStdev
+                },
+                debtToEquity: {
+                    mean: metric.debtToEquityMean,
+                    stdev: metric.debtToEquityStdev
+                },
+                pe: {
+                    mean: metric.peMean,
+                    stdev: metric.peStdev
+                },
+                discountFrom52W: {
+                    mean: metric.discountFrom52WMean,
+                    stdev: metric.discountFrom52WStdev
                 }
-            });
-            return acc;
-        }, []);
-        
+            }
+        }));
+
         res.json({
             data: sectorData,
-            lastUpdated: latestTimestamp
+            lastUpdated: new Date().toISOString()
         });
     } catch (error) {
         console.error('Error fetching sector analysis:', error);
-        res.status(500).json({ error: 'Failed to fetch sector analysis' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 });
 
-// Run new sector analysis (admin only)
-router.post('/run', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+// Run sector analysis (admin only)
+router.post('/run', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
     try {
-        const scriptPath = path.join(__dirname, '..', 'sp500_sector_normalization.ts');
-        
-        // Run the analysis script
-        const { stdout, stderr } = await execAsync(`npx ts-node ${scriptPath}`);
-        
-        if (stderr) {
-            console.warn('Warning during sector analysis:', stderr);
-        }
+        // Call Python API to get sector normalization data
+        const response = await axios.get('http://localhost:8001/api/sectors/normalization');
+        const sectorData: SectorData[] = response.data;
 
-        // Extract JSON data between markers
-        const apiOutputMatch = stdout.match(/API_OUTPUT_START\n([\s\S]*?)\nAPI_OUTPUT_END/);
-        if (!apiOutputMatch) {
-            console.error('Script output:', stdout);
-            throw new Error('Could not find API output in script results');
-        }
+        console.log("\n=== Backend Received Sector Data ===");
+        console.log("Number of sectors:", sectorData.length);
+        sectorData.forEach(sector => {
+            console.log(`\nSector: ${sector.name}`);
+            console.log("Metrics:", sector.metrics);
+        });
+        console.log("===================================\n");
 
-        try {
-            // Parse the results
-            const sectorData: SectorData[] = JSON.parse(apiOutputMatch[1]);
-            
-            // Save to database
-            const sectorMetricsRepository = AppDataSource.getRepository(SectorMetrics);
-            
-            // Clear existing metrics
-            await sectorMetricsRepository.clear();
-            
-            // Save new metrics
-            for (const sector of sectorData) {
-                const metrics = new SectorMetrics();
-                metrics.sector = sector.name;
-                metrics.dividendYieldMean = sector.metrics.dividendYield.mean;
-                metrics.dividendYieldStdev = sector.metrics.dividendYield.stdev;
-                metrics.profitMarginsMean = sector.metrics.profitMargins.mean;
-                metrics.profitMarginsStdev = sector.metrics.profitMargins.stdev;
-                metrics.debtToEquityMean = sector.metrics.debtToEquity.mean;
-                metrics.debtToEquityStdev = sector.metrics.debtToEquity.stdev;
-                metrics.peMean = sector.metrics.pe.mean;
-                metrics.peStdev = sector.metrics.pe.stdev;
-                metrics.discountFrom52WMean = sector.metrics.discountFrom52W.mean;
-                metrics.discountFrom52WStdev = sector.metrics.discountFrom52W.stdev;
-                
-                await sectorMetricsRepository.save(metrics);
-            }
-            
-            console.log('Sector analysis completed successfully');
-            res.json({ message: 'Sector analysis completed successfully' });
-        } catch (parseError) {
-            console.error('Error parsing script output:', parseError);
-            console.error('Raw API output:', apiOutputMatch[1]);
-            throw new Error('Failed to parse script output');
-        }
+        // Save to database
+        const sectorMetricsRepo = AppDataSource.getRepository(SectorMetrics);
+        
+        // Clear existing metrics
+        await sectorMetricsRepo.clear();
+
+        // Save new metrics
+        const metrics = sectorData.map(data => {
+            const metric = new SectorMetrics();
+            metric.sector = data.name;
+            metric.dividendYieldMean = data.metrics.dividendYield.mean;
+            metric.dividendYieldStdev = data.metrics.dividendYield.stdev;
+            metric.profitMarginsMean = data.metrics.profitMargins.mean;
+            metric.profitMarginsStdev = data.metrics.profitMargins.stdev;
+            metric.debtToEquityMean = data.metrics.debtToEquity.mean;
+            metric.debtToEquityStdev = data.metrics.debtToEquity.stdev;
+            metric.peMean = data.metrics.pe.mean;
+            metric.peStdev = data.metrics.pe.stdev;
+            metric.discountFrom52WMean = data.metrics.discountFrom52W.mean;
+            metric.discountFrom52WStdev = data.metrics.discountFrom52W.stdev;
+            return metric;
+        });
+
+        await sectorMetricsRepo.save(metrics);
+
+        // Verify stored data
+        const storedMetrics = await sectorMetricsRepo.find();
+        console.log("\n=== Stored Database Metrics ===");
+        console.log("Number of sectors in DB:", storedMetrics.length);
+        storedMetrics.forEach(metric => {
+            console.log(`\nSector: ${metric.sector}`);
+            console.log("Metrics:", {
+                dividendYield: { mean: metric.dividendYieldMean, stdev: metric.dividendYieldStdev },
+                profitMargins: { mean: metric.profitMarginsMean, stdev: metric.profitMarginsStdev },
+                debtToEquity: { mean: metric.debtToEquityMean, stdev: metric.debtToEquityStdev },
+                pe: { mean: metric.peMean, stdev: metric.peStdev },
+                discountFrom52W: { mean: metric.discountFrom52WMean, stdev: metric.discountFrom52WStdev }
+            });
+        });
+        console.log("==============================\n");
+
+        res.json({ 
+            message: 'Sector analysis completed successfully',
+            data: sectorData,
+            lastUpdated: new Date().toISOString()
+        });
     } catch (error) {
         console.error('Error running sector analysis:', error);
-        res.status(500).json({ error: 'Failed to run sector analysis' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 });
 

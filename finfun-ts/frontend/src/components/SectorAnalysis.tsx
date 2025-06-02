@@ -49,19 +49,21 @@ export const SectorAnalysis: React.FC = () => {
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [progressMessage, setProgressMessage] = useState<string>('');
 
-    const fetchSectorData = async () => {
+    // Load existing metrics on mount
+    useEffect(() => {
+        loadExistingMetrics();
+    }, []);
+
+    const loadExistingMetrics = async () => {
         try {
             setLoading(true);
             setError(null);
             const response = await api.getSectorAnalysis();
             setSectorData(response.data);
-            if (response.lastUpdated) {
-                setLastUpdated(new Date(response.lastUpdated));
-            }
+            setLastUpdated(new Date(response.lastUpdated));
         } catch (err: any) {
-            setError('Failed to fetch sector analysis data');
-            console.error(err);
-            setSectorData([]);
+            console.error('Failed to load existing metrics:', err);
+            setError('Failed to load existing sector metrics');
         } finally {
             setLoading(false);
         }
@@ -73,35 +75,25 @@ export const SectorAnalysis: React.FC = () => {
             setError(null);
             setProgressMessage('Starting sector analysis...');
             
-            // Simulate progress updates
-            const progressInterval = setInterval(() => {
-                setProgressMessage(prev => {
-                    if (prev.includes('Fetching stock data')) {
-                        return 'Processing sector data...';
-                    } else if (prev.includes('Processing sector data')) {
-                        return 'Calculating metrics...';
-                    } else if (prev.includes('Calculating metrics')) {
-                        return 'Finalizing results...';
-                    }
-                    return 'Fetching stock data...';
-                });
-            }, 5000);
-
+            // First get the normalization data
+            const result = await api.getSectorNormalization();
+            
+            // Then store it in the database
             await api.runSectorAnalysis();
-            clearInterval(progressInterval);
+            
+            // Finally load the stored data
+            const response = await api.getSectorAnalysis();
+            setSectorData(response.data);
+            setLastUpdated(new Date(response.lastUpdated));
+            
             setProgressMessage('');
-            await fetchSectorData();
-        } catch (err) {
+            setRunningAnalysis(false);
+        } catch (err: any) {
             setError('Failed to run sector analysis');
             console.error(err);
-        } finally {
             setRunningAnalysis(false);
         }
     };
-
-    useEffect(() => {
-        fetchSectorData();
-    }, []);
 
     const formatMetric = (value: number | null) => {
         if (value === null) return 'N/A';

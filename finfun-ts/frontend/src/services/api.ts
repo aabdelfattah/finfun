@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Portfolio, StockAnalysis, AIAnalysisResponse, AIAnalysisResult, EnhancedAnalysisResponse, AIStockAnalysis } from '../types';
+import { SectorData, SectorAnalysisResponse } from '../components/SectorAnalysis';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -47,19 +48,7 @@ interface StockData {
     discountFrom52W: number | null;
 }
 
-interface SectorData {
-    name: string;
-    stocks: StockData[];
-    metrics: {
-        dividendYield: SectorMetrics;
-        profitMargins: SectorMetrics;
-        debtToEquity: SectorMetrics;
-        pe: SectorMetrics;
-        discountFrom52W: SectorMetrics;
-    };
-}
-
-interface SectorAnalysisResponse {
+interface SectorMetricsResponse {
     data: SectorData[];
     lastUpdated: string;
 }
@@ -176,9 +165,17 @@ export const api = {
     },
 
     // Sector Analysis endpoints
-    getSectorAnalysis: async (): Promise<SectorAnalysisResponse> => {
-        const response = await apiClient.get('/sector-analysis');
-        return response.data;
+    async getSectorAnalysis(): Promise<SectorAnalysisResponse> {
+        try {
+            const response = await apiClient.get<SectorMetricsResponse>('/sector-analysis');
+            return {
+                data: response.data.data,
+                lastUpdated: response.data.lastUpdated
+            };
+        } catch (error) {
+            console.error('Error fetching sector analysis:', error);
+            throw new Error('Failed to fetch sector analysis data');
+        }
     },
 
     getSectorNormalization: async (): Promise<SectorData[]> => {

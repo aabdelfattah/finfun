@@ -16,11 +16,11 @@ interface SectorMetricsData {
 interface SectorData {
     name: string;
     metrics: {
-        dividendYield: SectorMetricsData;
-        profitMargins: SectorMetricsData;
-        debtToEquity: SectorMetricsData;
+        dividend_yield: SectorMetricsData;
+        profit_margins: SectorMetricsData;
+        debt_to_equity: SectorMetricsData;
         pe: SectorMetricsData;
-        discountFrom52W: SectorMetricsData;
+        discount_from_52w: SectorMetricsData;
     };
 }
 
@@ -38,15 +38,15 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         const sectorData: SectorData[] = metrics.map(metric => ({
             name: metric.sector,
             metrics: {
-                dividendYield: {
+                dividend_yield: {
                     mean: metric.dividendYieldMean,
                     stdev: metric.dividendYieldStdev
                 },
-                profitMargins: {
+                profit_margins: {
                     mean: metric.profitMarginsMean,
                     stdev: metric.profitMarginsStdev
                 },
-                debtToEquity: {
+                debt_to_equity: {
                     mean: metric.debtToEquityMean,
                     stdev: metric.debtToEquityStdev
                 },
@@ -54,7 +54,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
                     mean: metric.peMean,
                     stdev: metric.peStdev
                 },
-                discountFrom52W: {
+                discount_from_52w: {
                     mean: metric.discountFrom52WMean,
                     stdev: metric.discountFrom52WStdev
                 }
@@ -96,16 +96,16 @@ router.post('/run', authenticateToken, requireAdmin, async (req: Request, res: R
         const metrics = sectorData.map(data => {
             const metric = new SectorMetrics();
             metric.sector = data.name;
-            metric.dividendYieldMean = data.metrics.dividendYield.mean;
-            metric.dividendYieldStdev = data.metrics.dividendYield.stdev;
-            metric.profitMarginsMean = data.metrics.profitMargins.mean;
-            metric.profitMarginsStdev = data.metrics.profitMargins.stdev;
-            metric.debtToEquityMean = data.metrics.debtToEquity.mean;
-            metric.debtToEquityStdev = data.metrics.debtToEquity.stdev;
+            metric.dividendYieldMean = data.metrics.dividend_yield.mean;
+            metric.dividendYieldStdev = data.metrics.dividend_yield.stdev;
+            metric.profitMarginsMean = data.metrics.profit_margins.mean;
+            metric.profitMarginsStdev = data.metrics.profit_margins.stdev;
+            metric.debtToEquityMean = data.metrics.debt_to_equity.mean;
+            metric.debtToEquityStdev = data.metrics.debt_to_equity.stdev;
             metric.peMean = data.metrics.pe.mean;
             metric.peStdev = data.metrics.pe.stdev;
-            metric.discountFrom52WMean = data.metrics.discountFrom52W.mean;
-            metric.discountFrom52WStdev = data.metrics.discountFrom52W.stdev;
+            metric.discountFrom52WMean = data.metrics.discount_from_52w.mean;
+            metric.discountFrom52WStdev = data.metrics.discount_from_52w.stdev;
             return metric;
         });
 
@@ -118,11 +118,11 @@ router.post('/run', authenticateToken, requireAdmin, async (req: Request, res: R
         storedMetrics.forEach(metric => {
             console.log(`\nSector: ${metric.sector}`);
             console.log("Metrics:", {
-                dividendYield: { mean: metric.dividendYieldMean, stdev: metric.dividendYieldStdev },
-                profitMargins: { mean: metric.profitMarginsMean, stdev: metric.profitMarginsStdev },
-                debtToEquity: { mean: metric.debtToEquityMean, stdev: metric.debtToEquityStdev },
+                dividend_yield: { mean: metric.dividendYieldMean, stdev: metric.dividendYieldStdev },
+                profit_margins: { mean: metric.profitMarginsMean, stdev: metric.profitMarginsStdev },
+                debt_to_equity: { mean: metric.debtToEquityMean, stdev: metric.debtToEquityStdev },
                 pe: { mean: metric.peMean, stdev: metric.peStdev },
-                discountFrom52W: { mean: metric.discountFrom52WMean, stdev: metric.discountFrom52WStdev }
+                discount_from_52w: { mean: metric.discountFrom52WMean, stdev: metric.discountFrom52WStdev }
             });
         });
         console.log("==============================\n");

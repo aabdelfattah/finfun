@@ -20,23 +20,23 @@ import {
 } from '@mui/material';
 import { api } from '../services/api';
 
-interface SectorMetrics {
+export interface SectorMetrics {
     mean: number;
     stdev: number;
 }
 
-interface SectorData {
+export interface SectorData {
     name: string;
     metrics: {
-        dividendYield: SectorMetrics;
-        profitMargins: SectorMetrics;
-        debtToEquity: SectorMetrics;
+        dividend_yield: SectorMetrics;
+        profit_margins: SectorMetrics;
+        debt_to_equity: SectorMetrics;
         pe: SectorMetrics;
-        discountFrom52W: SectorMetrics;
+        discount_from_52w: SectorMetrics;
     };
 }
 
-interface SectorAnalysisResponse {
+export interface SectorAnalysisResponse {
     data: SectorData[];
     lastUpdated: string;
 }
@@ -184,28 +184,28 @@ export const SectorAnalysis: React.FC = () => {
                                                 <TableRow>
                                                     <TableCell>Dividend Yield</TableCell>
                                                     <TableCell align="right">
-                                                        {formatPercentage(sector.metrics.dividendYield.mean)}
+                                                        {formatPercentage(sector.metrics.dividend_yield.mean)}
                                                     </TableCell>
                                                     <TableCell align="right">
-                                                        {formatPercentage(sector.metrics.dividendYield.stdev)}
+                                                        {formatPercentage(sector.metrics.dividend_yield.stdev)}
                                                     </TableCell>
                                                 </TableRow>
                                                 <TableRow>
                                                     <TableCell>Profit Margins</TableCell>
                                                     <TableCell align="right">
-                                                        {formatPercentage(sector.metrics.profitMargins.mean)}
+                                                        {formatPercentage(sector.metrics.profit_margins.mean)}
                                                     </TableCell>
                                                     <TableCell align="right">
-                                                        {formatPercentage(sector.metrics.profitMargins.stdev)}
+                                                        {formatPercentage(sector.metrics.profit_margins.stdev)}
                                                     </TableCell>
                                                 </TableRow>
                                                 <TableRow>
                                                     <TableCell>Debt to Equity</TableCell>
                                                     <TableCell align="right">
-                                                        {formatMetric(sector.metrics.debtToEquity.mean)}
+                                                        {formatMetric(sector.metrics.debt_to_equity.mean)}
                                                     </TableCell>
                                                     <TableCell align="right">
-                                                        {formatMetric(sector.metrics.debtToEquity.stdev)}
+                                                        {formatMetric(sector.metrics.debt_to_equity.stdev)}
                                                     </TableCell>
                                                 </TableRow>
                                                 <TableRow>
@@ -220,10 +220,10 @@ export const SectorAnalysis: React.FC = () => {
                                                 <TableRow>
                                                     <TableCell>Discount from 52W High</TableCell>
                                                     <TableCell align="right">
-                                                        {formatPercentage(sector.metrics.discountFrom52W.mean)}
+                                                        {formatPercentage(sector.metrics.discount_from_52w.mean)}
                                                     </TableCell>
                                                     <TableCell align="right">
-                                                        {formatPercentage(sector.metrics.discountFrom52W.stdev)}
+                                                        {formatPercentage(sector.metrics.discount_from_52w.stdev)}
                                                     </TableCell>
                                                 </TableRow>
                                             </TableBody>

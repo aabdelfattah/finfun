@@ -32,6 +32,7 @@ import {
     DialogContent,
     DialogActions,
 } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
 import {
     Refresh as RefreshIcon,
     KeyboardArrowDown as KeyboardArrowDownIcon,
@@ -94,6 +95,19 @@ const EnhancedRow: React.FC<EnhancedRowProps> = ({ analysis, onViewAI }) => {
         }
         
         return <Chip label="AI Analysis Fresh" size="small" color="success" />;
+    };
+
+    const getFinalAnalysis = (analysisText: string): string => {
+        // Split the text by "Market_Analyst (to User_Proxy):"
+        const parts = analysisText.split('Market_Analyst (to User_Proxy):');
+        // Get the last part (final summary)
+        const finalPart = parts[parts.length - 1].trim();
+        // Extract everything up to the word "terminate"
+        const summaryEndIndex = finalPart.toLowerCase().indexOf('terminate');
+        if (summaryEndIndex === -1) {
+            return finalPart; // If no "terminate" found, return the whole part
+        }
+        return finalPart.substring(0, summaryEndIndex).trim();
     };
 
     return (
@@ -236,16 +250,60 @@ const EnhancedRow: React.FC<EnhancedRowProps> = ({ analysis, onViewAI }) => {
                                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                                 Type: {analysis.ai!.analysisType.toUpperCase()}
                                             </Typography>
-                                            <Typography variant="body2" sx={{ 
-                                                maxHeight: 100, 
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 4,
-                                                WebkitBoxOrient: 'vertical'
+                                            <Box sx={{ 
+                                                maxHeight: 400, 
+                                                overflow: 'auto',
+                                                '&::-webkit-scrollbar': {
+                                                    width: '8px',
+                                                },
+                                                '&::-webkit-scrollbar-track': {
+                                                    background: '#f1f1f1',
+                                                    borderRadius: '4px',
+                                                },
+                                                '&::-webkit-scrollbar-thumb': {
+                                                    background: '#888',
+                                                    borderRadius: '4px',
+                                                    '&:hover': {
+                                                        background: '#555',
+                                                    },
+                                                },
+                                                '& .markdown-body': {
+                                                    fontFamily: 'inherit',
+                                                    fontSize: '0.875rem',
+                                                    '& h1, & h2, & h3, & h4, & h5, & h6': {
+                                                        marginTop: 1,
+                                                        marginBottom: 0.5,
+                                                        fontSize: '1rem',
+                                                    },
+                                                    '& p': {
+                                                        marginBottom: 0.5,
+                                                    },
+                                                    '& ul, & ol': {
+                                                        paddingLeft: 2,
+                                                        marginBottom: 0.5,
+                                                    },
+                                                    '& li': {
+                                                        marginBottom: 0.25,
+                                                    },
+                                                    '& code': {
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                        padding: '1px 3px',
+                                                        borderRadius: 1,
+                                                        fontSize: '0.8rem',
+                                                    },
+                                                    '& pre': {
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                        padding: 1,
+                                                        borderRadius: 1,
+                                                        overflowX: 'auto',
+                                                        fontSize: '0.8rem',
+                                                    },
+                                                }
                                             }}>
-                                                {analysis.ai!.analysisText}
-                                            </Typography>
+                                                <ReactMarkdown>
+                                                    {getFinalAnalysis(analysis.ai!.analysisText)}
+                                                </ReactMarkdown>
+                                            </Box>
                                             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                                                 Analyzed: {formatDate(analysis.ai!.analyzedAt)}
                                             </Typography>

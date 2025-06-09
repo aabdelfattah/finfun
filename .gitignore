@@ -27,28 +27,49 @@ env/
 
 # Node.js
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 package-lock.json
-*.tgz
-*.tar.gz
+yarn.lock
 
-# Database
-*.db
-*.sqlite3
+# Build outputs
+dist/
+build/
+*.pyc
+__pycache__/
 
-# IDE
+# Environment files
+.env
+.env.*
+*.env
+
+# IDE files
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
 .DS_Store
-Thumbs.db # API Keys and Secrets - DO NOT COMMIT
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Database
+*.db
+*.sqlite3
+
+# API Keys and Secrets - DO NOT COMMIT
 finrobot-api/OAI_CONFIG_LIST
 finrobot-api/config_api_keys
 venv_finrobot/

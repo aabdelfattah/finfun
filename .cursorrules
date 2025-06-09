@@ -10,6 +10,8 @@ __pycache__/
 .env.*
 *.config.js
 *.config.ts
+package.json
+package-lock.json
 
 # Ignore test coverage reports
 coverage/

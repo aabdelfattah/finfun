@@ -224,23 +224,30 @@ async def fetch_nasdaq_tickers() -> List[str]:
     
     return tickers
 
-async def main(use_nasdaq: bool = False):
+async def main(use_nasdaq: bool = False, use_sp1500: bool = False):
     """
     Main function to calculate sector normalization metrics.
     Args:
-        use_nasdaq: If True, use NASDAQ tickers instead of S&P 1500
+        use_nasdaq: If True, use NASDAQ tickers instead of S&P 500
+        use_sp1500: If True, use S&P 1500 instead of S&P 500 (slower, may hit rate limits)
     """
     if use_nasdaq:
         # 1. Fetch NASDAQ tickers
         print('Loading NASDAQ tickers...')
         tickers = await fetch_nasdaq_tickers()
         print(f"Loaded {len(tickers)} NASDAQ tickers.")
-    else:
+    elif use_sp1500:
         # 1. Fetch S&P 1500 tickers and sectors
         print('Fetching S&P 1500 tickers and sectors...')
         sp1500_data = await fetch_sp1500_tickers_and_sectors()
         tickers = [item['symbol'] for item in sp1500_data]
         print(f"Fetched {len(tickers)} S&P 1500 tickers.")
+    else:
+        # 1. Fetch S&P 500 tickers and sectors (default)
+        print('Fetching S&P 500 tickers and sectors...')
+        sp500_data = await fetch_sp500_tickers_and_sectors()
+        tickers = [item['symbol'] for item in sp500_data]
+        print(f"Fetched {len(tickers)} S&P 500 tickers.")
     
     # 2. Fetch stock data
     print('Fetching stock data...')

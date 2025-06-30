@@ -16,7 +16,7 @@ export class FinRobotService {
     private readonly apiBaseUrl: string;
     private _aiAnalysisRepository: Repository<AIStockAnalysis> | null = null;
 
-    constructor(apiBaseUrl: string = 'http://localhost:8000') {
+    constructor(apiBaseUrl: string = 'http://localhost:8001') {
         this.apiBaseUrl = apiBaseUrl;
     }
 
@@ -75,7 +75,7 @@ export class FinRobotService {
             try {
                 // Call FinRobot API using axios for better timeout support
                 const response = await axios.get(
-                    `http://localhost:8000/api/analyze/${symbol}`,
+                    `http://localhost:8001/api/analyze/${symbol}`,
                     {
                         params: { analysis_type: analysisType },
                         timeout: 120000, // 2 minutes timeout

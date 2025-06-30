@@ -1,13 +1,7 @@
 pyautogen>=0.2.19
-ag2[openai]
-openai
 ipython
 huggingface_hub
 matplotlib
-
-# API framework
-fastapi
-uvicorn[standard]
 
 # financial libraries
 finnhub-python
@@ -46,4 +40,4 @@ starlette==0.37.2
 tenacity==8.3.0
 tqdm==4.66.1
 typing_extensions==4.9.0
-unstructured==0.8.1 
+unstructured==0.8.1

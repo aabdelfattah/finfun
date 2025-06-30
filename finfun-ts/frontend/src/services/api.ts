@@ -268,7 +268,7 @@ export const api = {
         success: boolean;
         error_message?: string;
     }> => {
-        const response = await fetch(`http://localhost:8000/api/analyze/${symbol}?analysis_type=${analysisType}`, {
+        const response = await fetch(`http://localhost:8001/api/analyze/${symbol}?analysis_type=${analysisType}`, {
             headers: {
                 'Content-Type': 'application/json',
             }

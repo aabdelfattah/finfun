@@ -25,7 +25,7 @@ FinFun System
 │   ├── AI Analysis Orchestration
 │   └── SQLite Database (TypeORM)
 │
-└── FinRobot AI API (Python/FastAPI) - Port 8000
+└── FinRobot AI API (Python/FastAPI) - Port 8001
     ├── AutoGen Multi-Agent System
     ├── Azure OpenAI Integration
     ├── Financial Data Processing
@@ -86,18 +86,21 @@ npm run dev  # Starts on port 5173
 ### 4. FinRobot AI Setup
 ```bash
 # Create Python virtual environment
-python3.11 -m venv venv_finrobot
-source venv_finrobot/bin/activate
+python3.11 -m venv .my_venv
+source .my_venv/bin/activate
 
 # Install FinRobot and dependencies
-cd finrobot-api
-pip install -r finrobot_requirements.txt
+cd finfun-py-api
+pip install -r finrobot_requirements.txt #comes from finrobot repo
+pip install -r requirements.txt
+pip install -U finrobot
+pip install "ag2[openai]"
 
 # Configure API keys (see Configuration section)
 # Edit OAI_CONFIG_LIST and config_api_keys
 
 # Start FinRobot API
-python -m uvicorn finrobot_market_api:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 ### 5. Access the Application
@@ -253,7 +256,7 @@ npm run build
 
 # FinRobot API
 cd finrobot-api
-python -m uvicorn finrobot_market_api:app --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --host 0.0.0.0 --port 8001
 ```
 
 ### Docker Support
@@ -352,7 +355,7 @@ npm run dev
 
 **AI Analysis not working**:
 1. Check API keys in `finrobot-api/` directory
-2. Verify FinRobot API is running on port 8000
+2. Verify FinRobot API is running on port 8001
 3. Check backend logs for connection errors
 
 **Frontend not loading**:

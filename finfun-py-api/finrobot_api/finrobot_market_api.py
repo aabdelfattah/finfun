@@ -240,12 +240,12 @@ async def analyze_stock(
 
 if __name__ == "__main__":
     print("🤖 Starting FinRobot Market Analyst API...")
-    print("📈 Visit http://localhost:8000/docs for interactive API documentation")
-    print("🔗 Example: curl 'http://localhost:8000/analyze/NVDA?analysis_type=quick'")
+    print("📈 Visit http://localhost:8001/docs for interactive API documentation")
+    print("🔗 Example: curl 'http://localhost:8001/analyze/NVDA?analysis_type=quick'")
     
     uvicorn.run(
         app, 
         host="0.0.0.0", 
-        port=8000,
+        port=8001,
         log_level="info"
     ) 

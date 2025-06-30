@@ -68,10 +68,10 @@ coverage/
 # Database
 *.db
 *.sqlite3
+database.sqlite
+
 
 # API Keys and Secrets - DO NOT COMMIT
-finrobot-api/OAI_CONFIG_LIST
-finrobot-api/config_api_keys
+finfun-py-api/OAI_CONFIG_LIST
+finfun-py-api/config_api_keys
 venv_finrobot/
-*.db
-database.sqlite

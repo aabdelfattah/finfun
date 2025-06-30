@@ -73,7 +73,7 @@ export interface SectorMetrics {
 export interface AIStockAnalysis {
     id: number;
     stockSymbol: string;
-    analysisType: 'quick' | 'standard' | 'deep';
+    timeframe: 'Next Week' | 'Next Month';
     analysisText: string;
     portfolioIds: number[];
     success: boolean;
@@ -97,7 +97,7 @@ export interface AIAnalysisResult {
         total: number;
         successful: number;
         failed: number;
-        analysisType: string;
+        timeframe: string;
     };
     errors: {
         symbol: string;

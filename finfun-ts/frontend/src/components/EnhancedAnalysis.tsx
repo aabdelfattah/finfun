@@ -248,7 +248,7 @@ const EnhancedRow: React.FC<EnhancedRowProps> = ({ analysis, onViewAI }) => {
                                                 AI Analysis Preview
                                             </Typography>
                                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                                Type: {analysis.ai!.analysisType.toUpperCase()}
+                                                Timeframe: {analysis.ai!.timeframe}
                                             </Typography>
                                             <Box sx={{ 
                                                 maxHeight: 400, 
@@ -340,7 +340,7 @@ const AIAnalysisDialog: React.FC<AIAnalysisDialogProps> = ({ open, onClose, symb
                     <>
                         <Box sx={{ mb: 2 }}>
                             <Chip 
-                                label={`${aiAnalysis.analysisType.toUpperCase()} Analysis`} 
+                                label={`${aiAnalysis.timeframe} Analysis`} 
                                 color="primary" 
                                 size="small" 
                             />
@@ -395,7 +395,7 @@ export const EnhancedAnalysis: React.FC = () => {
     const [analyzing, setAnalyzing] = useState(false);
     const [aiAnalyzing, setAIAnalyzing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [aiAnalysisType, setAIAnalysisType] = useState<'quick' | 'standard' | 'deep'>('standard');
+    const [timeframe, setTimeframe] = useState<'Next Week' | 'Next Month'>('Next Week');
     const [selectedAI, setSelectedAI] = useState<{ symbol: string; analysis: AIStockAnalysis } | null>(null);
 
     useEffect(() => {
@@ -432,7 +432,7 @@ export const EnhancedAnalysis: React.FC = () => {
         setAIAnalyzing(true);
         setError(null);
         try {
-            await api.performAIAnalysis(aiAnalysisType);
+            await api.performAIAnalysis(timeframe);
             await loadEnhancedData();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to perform AI analysis');
@@ -446,7 +446,7 @@ export const EnhancedAnalysis: React.FC = () => {
         setAIAnalyzing(true);
         setError(null);
         try {
-            await api.performCompleteAnalysis(true, aiAnalysisType);
+            await api.performCompleteAnalysis(true, timeframe);
             await loadEnhancedData();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to perform complete analysis');
@@ -503,15 +503,14 @@ export const EnhancedAnalysis: React.FC = () => {
                     </Button>
 
                     <FormControl size="small" sx={{ minWidth: 120 }}>
-                        <InputLabel>AI Analysis Type</InputLabel>
+                        <InputLabel>Timeframe</InputLabel>
                         <Select
-                            value={aiAnalysisType}
-                            label="AI Analysis Type"
-                            onChange={(e) => setAIAnalysisType(e.target.value as 'quick' | 'standard' | 'deep')}
+                            value={timeframe}
+                            label="Timeframe"
+                            onChange={(e) => setTimeframe(e.target.value as 'Next Week' | 'Next Month')}
                         >
-                            <MenuItem value="quick">Quick</MenuItem>
-                            <MenuItem value="standard">Standard</MenuItem>
-                            <MenuItem value="deep">Deep</MenuItem>
+                            <MenuItem value="Next Week">Next Week</MenuItem>
+                            <MenuItem value="Next Month">Next Month</MenuItem>
                         </Select>
                     </FormControl>
 

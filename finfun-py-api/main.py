@@ -44,9 +44,9 @@ async def health_check():
 @app.get("/api/analyze/{symbol}")
 async def analyze_stock(
     symbol: str,
-    analysis_type: str = Query(
-        default="standard", 
-        description="Analysis type: quick, standard, or deep"
+    timeframe: str = Query(
+        default="Next Week", 
+        description="Timeframe: Next Week or Next Month"
     )
 ) -> AnalysisResponse:
     """
@@ -54,11 +54,11 @@ async def analyze_stock(
     Returns detailed analysis including predictions and key factors.
     """
     try:
-        result = market_analyst.analyze_stock(symbol, analysis_type)
+        result = market_analyst.analyze_stock(symbol, timeframe)
         return AnalysisResponse(
             symbol=symbol,
             analysis_date=result.get("analysis_date", ""),
-            analysis_type=analysis_type,
+            analysis_type=timeframe,
             analysis_text=result.get("analysis_text", ""),
             success=result.get("success", False),
             error_message=result.get("error_message")

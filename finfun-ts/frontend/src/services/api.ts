@@ -216,18 +216,18 @@ export const api = {
         return response.data;
     },
 
-    performAIAnalysis: async (analysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<AIAnalysisResult> => {
-        const response = await apiClient.post('/analysis/ai/analyze', { analysisType });
+    performAIAnalysis: async (timeframe: 'Next Week' | 'Next Month' = 'Next Week'): Promise<AIAnalysisResult> => {
+        const response = await apiClient.post('/analysis/ai/analyze', { timeframe });
         return response.data;
     },
 
-    getStockAIAnalysis: async (symbol: string, analysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<{
+    getStockAIAnalysis: async (symbol: string, timeframe: 'Next Week' | 'Next Month' = 'Next Week'): Promise<{
         aiAnalysis: AIStockAnalysis;
         isFresh: boolean;
         hasAnalysis: boolean;
     }> => {
         const response = await apiClient.get(`/analysis/ai/${symbol}`, {
-            params: { analysisType }
+            params: { timeframe }
         });
         return response.data;
     },
@@ -238,7 +238,7 @@ export const api = {
     },
 
     // Combined analysis method that gets both traditional and AI analysis
-    performCompleteAnalysis: async (includeAI: boolean = true, aiAnalysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<{
+    performCompleteAnalysis: async (includeAI: boolean = true, timeframe: 'Next Week' | 'Next Month' = 'Next Week'): Promise<{
         traditional: AnalysisResponse;
         ai?: AIAnalysisResult;
     }> => {
@@ -251,7 +251,7 @@ export const api = {
 
         // Then perform AI analysis
         try {
-            const ai = await api.performAIAnalysis(aiAnalysisType);
+            const ai = await api.performAIAnalysis(timeframe);
             return { traditional, ai };
         } catch (error) {
             console.warn('AI analysis failed, returning traditional analysis only:', error);
@@ -260,7 +260,7 @@ export const api = {
     },
 
     // Add new method for direct FinRobot API calls
-    getFinRobotAnalysis: async (symbol: string, analysisType: 'quick' | 'standard' | 'deep' = 'standard'): Promise<{
+    getFinRobotAnalysis: async (symbol: string, timeframe: 'Next Week' | 'Next Month' = 'Next Week'): Promise<{
         symbol: string;
         analysis_date: string;
         analysis_type: string;
@@ -268,7 +268,7 @@ export const api = {
         success: boolean;
         error_message?: string;
     }> => {
-        const response = await fetch(`http://localhost:8001/api/analyze/${symbol}?analysis_type=${analysisType}`, {
+        const response = await fetch(`http://localhost:8001/api/analyze/${symbol}?timeframe=${timeframe}`, {
             headers: {
                 'Content-Type': 'application/json',
             }

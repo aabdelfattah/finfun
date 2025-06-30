@@ -75,7 +75,7 @@ class MarketAnalystService:
             print(f"❌ Error initializing Market Analyst: {e}")
             raise
     
-    def analyze_stock(self, symbol: str, analysis_type: str = "standard") -> Dict[str, Any]:
+    def analyze_stock(self, symbol: str, timeframe: str = "Next Week") -> Dict[str, Any]:
         """Analyze a stock using FinRobot's Market Analyst"""
         
         if not self.assistant:
@@ -83,21 +83,18 @@ class MarketAnalystService:
         
         current_date = get_current_date()
         
-        # Create analysis prompt based on type
-        if analysis_type == "quick":
+        # Create analysis prompt based on timeframe
+        if timeframe == "Next Month":
             prompt = (
-                f"Use the tools to analyze {symbol} stock on {current_date}. "
-                f"Get basic company info, recent financials, and news. "
-                f"Provide a brief prediction for next week with 2-3 key factors."
+                f"Use all the tools provided to retrieve information available for {symbol} upon {current_date}. "
+                f"Analyze the positive developments and potential concerns of {symbol} "
+                f"with 3-5 most important factors respectively and keep them concise. "
+                f"Most factors should be inferred from company related news, earnings trends, and market conditions. "
+                f"Then make a detailed prediction (e.g. up/down by 5-15%) of the {symbol} stock price movement for next month. "
+                f"Consider monthly trends, upcoming events, and broader market factors. "
+                f"Provide a comprehensive analysis to support your prediction."
             )
-        elif analysis_type == "deep":
-            prompt = (
-                f"Conduct comprehensive analysis of {symbol} stock on {current_date}. "
-                f"Use all available tools to retrieve company profile, financials, and recent news. "
-                f"Analyze positive developments and potential concerns with 4-6 factors. "
-                f"Provide detailed prediction for next week with confidence level."
-            )
-        else:  # standard
+        else:  # Next Week (default)
             prompt = (
                 f"Use all the tools provided to retrieve information available for {symbol} upon {current_date}. "
                 f"Analyze the positive developments and potential concerns of {symbol} "

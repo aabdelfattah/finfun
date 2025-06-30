@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 @Entity()
-@Index(['stockSymbol', 'analysisType']) // Index for efficient lookups
+@Index(['stockSymbol', 'timeframe']) // Index for efficient lookups
 export class AIStockAnalysis {
     @PrimaryGeneratedColumn()
     id: number;
@@ -9,8 +9,8 @@ export class AIStockAnalysis {
     @Column()
     stockSymbol: string;
 
-    @Column({ default: 'standard' })
-    analysisType: string; // 'quick', 'standard', 'deep'
+    @Column({ default: 'Next Week' })
+    timeframe: string; // 'Next Week', 'Next Month'
 
     @Column('text')
     analysisText: string;

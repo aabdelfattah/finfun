@@ -336,12 +336,12 @@ router.post('/ai/analyze', authenticateToken, async (req: AuthRequest, res: Resp
             return res.status(401).json({ error: 'User not authenticated' });
         }
 
-        const { analysisType = 'standard' } = req.body;
+        const { timeframe = 'Next Week' } = req.body;
         
-        // Validate analysis type
-        if (!['quick', 'standard', 'deep'].includes(analysisType)) {
+        // Validate timeframe
+        if (!['Next Week', 'Next Month'].includes(timeframe)) {
             return res.status(400).json({ 
-                error: 'Invalid analysis type. Must be: quick, standard, or deep' 
+                error: 'Invalid timeframe. Must be: Next Week or Next Month' 
             });
         }
 
@@ -377,7 +377,7 @@ router.post('/ai/analyze', authenticateToken, async (req: AuthRequest, res: Resp
         const aiAnalyses = await getFinRobotService().analyzePortfolioStocks(
             symbols, 
             portfolio.id, 
-            analysisType as 'quick' | 'standard' | 'deep'
+            timeframe as 'Next Week' | 'Next Month'
         );
 
         const successfulAnalyses = aiAnalyses.filter(a => a.success);
@@ -390,7 +390,7 @@ router.post('/ai/analyze', authenticateToken, async (req: AuthRequest, res: Resp
                 total: aiAnalyses.length,
                 successful: successfulAnalyses.length,
                 failed: failedAnalyses.length,
-                analysisType
+                timeframe
             },
             errors: failedAnalyses.map(a => ({ 
                 symbol: a.stockSymbol, 
@@ -412,7 +412,7 @@ router.get('/ai/:symbol', authenticateToken, async (req: AuthRequest, res: Respo
         }
 
         const { symbol } = req.params;
-        const { analysisType = 'standard' } = req.query;
+        const { timeframe = 'Next Week' } = req.query;
 
         const portfolioRepository = AppDataSource.getRepository(Portfolio);
         const aiAnalysisRepository = AppDataSource.getRepository(AIStockAnalysis);
@@ -441,7 +441,7 @@ router.get('/ai/:symbol', authenticateToken, async (req: AuthRequest, res: Respo
         const aiAnalysis = await aiAnalysisRepository.findOne({
             where: { 
                 stockSymbol: symbol.toUpperCase(), 
-                analysisType: analysisType as string
+                timeframe: timeframe as string
             },
             order: { analyzedAt: 'DESC' }
         });
@@ -548,25 +548,25 @@ router.get('/enhanced', authenticateToken, async (req: AuthRequest, res: Respons
 router.get('/ai/stock/:symbol', authenticateToken, async (req, res) => {
     try {
         const symbol = req.params.symbol.toUpperCase();
-        const analysisType = (req.query.analysisType as string) || 'quick';
+        const timeframe = (req.query.timeframe as string) || 'Next Week';
         
-        // Validate analysis type
-        if (!['quick', 'standard', 'deep'].includes(analysisType)) {
+        // Validate timeframe
+        if (!['Next Week', 'Next Month'].includes(timeframe)) {
             return res.status(400).json({ 
-                error: 'Invalid analysis type. Must be quick, standard, or deep' 
+                error: 'Invalid timeframe. Must be Next Week or Next Month' 
             });
         }
 
-        console.log(`🔍 Individual AI analysis request for ${symbol} (${analysisType})`);
+        console.log(`🔍 Individual AI analysis request for ${symbol} (${timeframe})`);
 
         const finRobotService = getFinRobotService();
         
         // Use portfolio ID 0 for individual stock analysis
-        const result = await finRobotService.analyzeStock(symbol, 0, analysisType as any);
+        const result = await finRobotService.analyzeStock(symbol, 0, timeframe as any);
         
         res.json({
             symbol: result.stockSymbol,
-            analysisType: result.analysisType,
+            timeframe: result.timeframe,
             analysisText: result.analysisText,
             success: result.success,
             errorMessage: result.errorMessage,

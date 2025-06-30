@@ -38,21 +38,21 @@ export class FinRobotService {
     async analyzeStock(
         symbol: string, 
         portfolioId: number,
-        analysisType: 'quick' | 'standard' | 'deep' = 'standard'
+        timeframe: 'Next Week' | 'Next Month' = 'Next Week'
     ): Promise<AIStockAnalysis> {
         
         // Check for fresh cached analysis
         const existingAnalysis = await this.aiAnalysisRepository.findOne({
             where: { 
                 stockSymbol: symbol, 
-                analysisType: analysisType 
+                timeframe: timeframe 
             },
             order: { analyzedAt: 'DESC' }
         });
 
         // If we have fresh analysis, update portfolio IDs and return
         if (existingAnalysis && existingAnalysis.isFresh()) {
-            console.log(`📄 Using cached AI analysis for ${symbol} (${analysisType})`);
+            console.log(`📄 Using cached AI analysis for ${symbol} (${timeframe})`);
             
             // Update portfolio IDs to include current portfolio (simple-json handles array directly)
             const portfolioIds = existingAnalysis.portfolioIds || [];
@@ -66,7 +66,7 @@ export class FinRobotService {
         }
 
         // Call FinRobot API with retry logic
-        console.log(`🤖 Calling FinRobot API for ${symbol} (${analysisType})`);
+        console.log(`🤖 Calling FinRobot API for ${symbol} (${timeframe})`);
         
         const maxRetries = 2;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -77,7 +77,7 @@ export class FinRobotService {
                 const response = await axios.get(
                     `http://localhost:8001/api/analyze/${symbol}`,
                     {
-                        params: { analysis_type: analysisType },
+                        params: { timeframe: timeframe },
                         timeout: 120000, // 2 minutes timeout
                         headers: {
                             'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ export class FinRobotService {
                 // Create new analysis record
                 const analysis = new AIStockAnalysis();
                 analysis.stockSymbol = symbol;
-                analysis.analysisType = analysisType;
+                analysis.timeframe = timeframe;
                 analysis.analysisText = data.analysis_text;
                 analysis.portfolioIds = [portfolioId];
                 analysis.success = true;
@@ -113,7 +113,7 @@ export class FinRobotService {
                     // Create failed analysis record on final attempt
                     const analysis = new AIStockAnalysis();
                     analysis.stockSymbol = symbol;
-                    analysis.analysisType = analysisType;
+                    analysis.timeframe = timeframe;
                     analysis.analysisText = '';
                     analysis.portfolioIds = [portfolioId];
                     analysis.success = false;
@@ -140,7 +140,7 @@ export class FinRobotService {
     async analyzePortfolioStocks(
         symbols: string[], 
         portfolioId: number,
-        analysisType: 'quick' | 'standard' | 'deep' = 'standard'
+        timeframe: 'Next Week' | 'Next Month' = 'Next Week'
     ): Promise<AIStockAnalysis[]> {
         
         console.log(`🎯 Starting AI analysis for portfolio ${portfolioId}: [${symbols.join(', ')}]`);
@@ -154,7 +154,7 @@ export class FinRobotService {
             
             try {
                 // Use the original analyzeStock method with proper delay handling
-                const result = await this.analyzeStock(symbol, portfolioId, analysisType);
+                const result = await this.analyzeStock(symbol, portfolioId, timeframe);
                 
                 if (result) {
                     results.push(result);

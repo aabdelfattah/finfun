@@ -20,12 +20,27 @@ function normalizeParameter(values: (number | null)[], reference: (number | null
     // Use reference set for mean/std
     const validRef = reference.filter((v): v is number => v !== null);
     if (validRef.length === 0) return values.map(() => 0);
+    
     const mean = validRef.reduce((a, b) => a + b, 0) / validRef.length;
-    const std = Math.sqrt(
-        validRef.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (validRef.length - 1)
-    );
-    if (std === 0) return values.map(v => v === null ? 0 : v - mean);
-    return values.map(v => v === null ? 0 : (v - mean) / std);
+    
+    // Handle cases where we have insufficient data for standard deviation
+    if (validRef.length <= 1) {
+        return values.map(v => v === null ? 0 : v - mean);
+    }
+    
+    const variance = validRef.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (validRef.length - 1);
+    const std = Math.sqrt(variance);
+    
+    // Handle zero standard deviation (all values are the same)
+    if (std === 0 || !isFinite(std)) {
+        return values.map(v => v === null ? 0 : v - mean);
+    }
+    
+    return values.map(v => {
+        if (v === null) return 0;
+        const normalized = (v - mean) / std;
+        return isFinite(normalized) ? normalized : 0;
+    });
 }
 
 export function calculateNormalizedScores(
@@ -85,9 +100,19 @@ export function calculateNormalizedScores(
     // Scale scores to 0-100 range (within portfolio)
     return portfolioStocks.map((stock, index) => {
         const { healthScore, valueScore, totalScore } = rawScores[index];
-        const scaledHealthScore = maxHealth === minHealth ? 50 : 50 + (healthScore - minHealth) / (maxHealth - minHealth) * 50;
-        const scaledValueScore = maxValue === minValue ? 50 : 50 + (valueScore - minValue) / (maxValue - minValue) * 50;
-        const scaledTotalScore = maxTotal === minTotal ? 50 : 50 + (totalScore - minTotal) / (maxTotal - minTotal) * 50;
+        
+        // Helper function to safely scale scores
+        const safeScale = (score: number, min: number, max: number): number => {
+            if (!isFinite(score) || !isFinite(min) || !isFinite(max)) return 50;
+            if (max === min) return 50;
+            const scaled = 50 + (score - min) / (max - min) * 50;
+            return isFinite(scaled) ? Math.max(0, Math.min(100, scaled)) : 50;
+        };
+        
+        const scaledHealthScore = safeScale(healthScore, minHealth, maxHealth);
+        const scaledValueScore = safeScale(valueScore, minValue, maxValue);
+        const scaledTotalScore = safeScale(totalScore, minTotal, maxTotal);
+        
         return {
             symbol: stock.symbol,
             healthScore: scaledHealthScore,

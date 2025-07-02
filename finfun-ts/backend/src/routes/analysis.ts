@@ -61,8 +61,16 @@ function getRecommendation(totalScore: number): string {
 // Helper function to check if analysis is fresh (less than 24 hours old)
 function isAnalysisFresh(analyzedAt: Date): boolean {
     const now = new Date();
-    const hoursDiff = (now.getTime() - analyzedAt.getTime()) / (1000 * 60 * 60);
-    return hoursDiff < 24;
+    const diffHours = (now.getTime() - analyzedAt.getTime()) / (1000 * 60 * 60);
+    return diffHours < 24; // Fresh if less than 24 hours old
+}
+
+// Helper function to sanitize numeric values for database storage
+function sanitizeNumericValue(value: number): number {
+    if (isNaN(value) || !isFinite(value)) {
+        return 0; // Default to 0 for invalid values
+    }
+    return value;
 }
 
 // Get all analyses
@@ -257,10 +265,10 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
 
             // Update analysis data
             analysis.sector = stockData.find(s => s.symbol === score.symbol)?.sector || 'Unknown';
-            analysis.healthScore = score.healthScore;
-            analysis.valueScore = score.valueScore;
-            analysis.totalScore = score.totalScore;
-            analysis.recommendation = getRecommendation(score.totalScore);
+            analysis.healthScore = sanitizeNumericValue(score.healthScore);
+            analysis.valueScore = sanitizeNumericValue(score.valueScore);
+            analysis.totalScore = sanitizeNumericValue(score.totalScore);
+            analysis.recommendation = getRecommendation(sanitizeNumericValue(score.totalScore));
             analysis.analyzedAt = new Date();
             
             // Save original metrics

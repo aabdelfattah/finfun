@@ -16,6 +16,13 @@ export interface Portfolio {
     updatedAt: string;
 }
 
+export interface TickerData {
+    symbol: string;
+    name: string;
+    marketCategory: string;
+    etf: boolean;
+}
+
 export interface BetterAlternative {
     stockSymbol: string;
     healthScore: number;

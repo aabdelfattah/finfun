@@ -88,6 +88,28 @@ function getToken(): string {
     return token;
 }
 
+interface TickerData {
+    symbol: string;
+    name: string;
+    marketCategory: string;
+    etf: boolean;
+}
+
+interface TickerSearchResponse {
+    tickers: TickerData[];
+}
+
+interface TickerValidationResponse {
+    valid: boolean;
+    ticker: TickerData | null;
+}
+
+interface AddTickerResponse {
+    message: string;
+    stock: PortfolioStock;
+    tickerInfo: TickerData;
+}
+
 export const api = {
     // Auth endpoints
     login: async (email: string, password: string): Promise<AuthResponse> => {
@@ -140,6 +162,29 @@ export const api = {
                 'Content-Type': 'multipart/form-data',
             },
         });
+    },
+
+    // New ticker-related endpoints
+    searchTickers: async (query: string, limit?: number): Promise<TickerSearchResponse> => {
+        const params = new URLSearchParams({ q: query });
+        if (limit) params.append('limit', limit.toString());
+        
+        const response = await apiClient.get(`/portfolio/search-tickers?${params}`);
+        return response.data;
+    },
+
+    validateTicker: async (symbol: string): Promise<TickerValidationResponse> => {
+        const response = await apiClient.get(`/portfolio/validate-ticker/${symbol}`);
+        return response.data;
+    },
+
+    addTickerToPortfolio: async (symbol: string): Promise<AddTickerResponse> => {
+        const response = await apiClient.post('/portfolio/add-ticker', { symbol });
+        return response.data;
+    },
+
+    removeFromPortfolio: async (stockId: number): Promise<void> => {
+        await apiClient.delete(`/portfolio/stocks/${stockId}`);
     },
 
     // Analysis endpoints

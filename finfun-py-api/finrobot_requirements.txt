@@ -1,4 +1,4 @@
-pyautogen>=0.2.19
+ag2>=0.2.19
 ipython
 huggingface_hub
 matplotlib
@@ -15,7 +15,7 @@ numpy
 pandas
 pyPDF2
 reportlab
-pyautogen[retrievechat]
+ag2[retrievechat]
 
 # packaging
 setuptools>=41.4.0
